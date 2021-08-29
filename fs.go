@@ -28,7 +28,7 @@ func main() {
 		println("usage: ccp src dst")
 		os.Exit(1)
 	}
-	sfs, dfs := driver[a[0]], driver[a[1]]
+	sfs, dfs := driver[uri(a[0]).Scheme], driver[uri(a[1]).Scheme]
 	if sfs == nil {
 		println("src: not supported", a[0])
 		os.Exit(1)
