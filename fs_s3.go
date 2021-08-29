@@ -5,6 +5,8 @@ import (
 	"context"
 	"io"
 	"os"
+	"sync/atomic"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	s3 "github.com/aws/aws-sdk-go/service/s3"
@@ -15,6 +17,7 @@ type S3 struct {
 	ctx context.Context
 	c   *s3.S3
 	u   *s3m.Uploader
+	ctr int64 // how many uploaders are uploading
 	err error
 }
 
@@ -58,6 +61,8 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 		return nil, err
 	}
 	go func() {
+		atomic.AddInt64(&g.ctr, +1)
+		defer atomic.AddInt64(&g.ctr, -1)
 		_, err = g.u.Upload(&s3m.UploadInput{
 			Body:   bufio.NewReader(pr),
 			Bucket: &u.Host,
@@ -68,6 +73,14 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 		}
 	}()
 	return pw, nil
+}
+
+func (g *S3) Close() error {
+	for atomic.LoadInt64(&g.ctr) > 0 {
+		println("s3", atomic.LoadInt64(&g.ctr), "uploaders uploading")
+		time.Sleep(time.Second)
+	}
+	return nil
 }
 
 // sess.Copy(&aws.Config{Region: aws.String("us-east-2")})

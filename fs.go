@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"time"
 )
 
 var ctx = context.Background()
@@ -15,6 +14,7 @@ var ctx = context.Background()
 var driver = map[string]interface {
 	Open(string) (io.ReadCloser, error)
 	Create(string) (io.WriteCloser, error)
+	Close() error
 }{
 	"s3":   &S3{ctx: ctx},
 	"gs":   &GS{ctx: ctx},
@@ -22,7 +22,15 @@ var driver = map[string]interface {
 	"":     &OS{},
 }
 
+func closeAll() {
+	for _, fs := range driver {
+		fs.Close()
+	}
+}
+
 func main() {
+	defer closeAll()
+
 	flag.Parse()
 	a := flag.Args()
 	if len(a) != 2 {
@@ -40,17 +48,15 @@ func main() {
 	}
 	src, err := sfs.Open(a[0])
 	ck("open src", err)
+	defer src.Close()
+
 	dst, err := dfs.Create(a[1])
 	ck("create dst", err)
+	defer dst.Close()
 
 	buf := make([]byte, 1024*1024*64)
 	_, err = io.CopyBuffer(dst, src, buf)
 	ck("copy", err)
-	dst.Close()
-	src.Close()
-
-	time.Sleep(5 * time.Second)
-
 }
 
 func ck(c string, err error) {
@@ -69,6 +75,7 @@ func (f OS) Open(file string) (io.ReadCloser, error) {
 func (f OS) Create(file string) (io.WriteCloser, error) {
 	return os.Create(file)
 }
+func (f OS) Close() error { return nil }
 
 func uri(s string) url.URL {
 	u, _ := url.Parse(s)

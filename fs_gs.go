@@ -38,3 +38,5 @@ func (g *GS) Create(file string) (io.WriteCloser, error) {
 	u := uri(file)
 	return g.c.Bucket(u.Host).Object(u.Path).NewWriter(g.ctx), nil
 }
+
+func (f GS) Close() error { return nil }
