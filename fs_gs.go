@@ -24,11 +24,17 @@ func (g *GS) ensure() bool {
 }
 
 func (g *GS) Open(file string) (io.ReadCloser, error) {
+	if !g.ensure() {
+		return nil, g.err
+	}
 	u := uri(file)
 	return g.c.Bucket(u.Host).Object(u.Path).NewReader(g.ctx)
 }
 
 func (g *GS) Create(file string) (io.WriteCloser, error) {
+	if !g.ensure() {
+		return nil, g.err
+	}
 	u := uri(file)
 	return g.c.Bucket(u.Host).Object(u.Path).NewWriter(g.ctx), nil
 }
