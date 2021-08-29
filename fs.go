@@ -7,6 +7,10 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"sync/atomic"
+	"time"
+
+	"github.com/as/log"
 )
 
 var ctx = context.Background()
@@ -16,10 +20,12 @@ var driver = map[string]interface {
 	Create(string) (io.WriteCloser, error)
 	Close() error
 }{
-	"s3":   &S3{ctx: ctx},
-	"gs":   &GS{ctx: ctx},
-	"file": &OS{},
-	"":     &OS{},
+	"s3":    &S3{ctx: ctx},
+	"gs":    &GS{ctx: ctx},
+	"file":  &OS{},
+	"http":  &HTTP{ctx: ctx},
+	"https": &HTTP{ctx: ctx},
+	"":      &OS{},
 }
 
 func closeAll() {
@@ -54,9 +60,29 @@ func main() {
 	ck("create dst", err)
 	defer dst.Close()
 
-	buf := make([]byte, 1024*1024*64)
-	_, err = io.CopyBuffer(dst, src, buf)
-	ck("copy", err)
+	done := make(chan bool)
+	go func() {
+		buf := make([]byte, 1024*1024*64)
+		_, err = io.CopyBuffer(tx{dst}, rx{src}, buf)
+		ck("copy", err)
+		close(done)
+	}()
+
+	tick := time.NewTicker(time.Second).C
+Loop:
+	for {
+		select {
+		case <-done:
+			rx := atomic.LoadInt64(&iostat.rx)
+			tx := atomic.LoadInt64(&iostat.tx)
+			log.Info.Add("src", a[0], "dst", a[1], "rx", rx, "tx", tx).Printf("done")
+			break Loop
+		case <-tick:
+			rx := atomic.LoadInt64(&iostat.rx)
+			tx := atomic.LoadInt64(&iostat.tx)
+			log.Info.Add("src", a[0], "dst", a[1], "rx", rx, "tx", tx).Printf("")
+		}
+	}
 }
 
 func ck(c string, err error) {
@@ -65,17 +91,6 @@ func ck(c string, err error) {
 		os.Exit(1)
 	}
 }
-
-type OS struct {
-}
-
-func (f OS) Open(file string) (io.ReadCloser, error) {
-	return os.Open(file)
-}
-func (f OS) Create(file string) (io.WriteCloser, error) {
-	return os.Create(file)
-}
-func (f OS) Close() error { return nil }
 
 func uri(s string) url.URL {
 	u, _ := url.Parse(s)

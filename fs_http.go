@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"io"
+	"net/http"
 )
 
 type HTTP struct {
