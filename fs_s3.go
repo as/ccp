@@ -1,17 +1,20 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"io"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	s3 "github.com/aws/aws-sdk-go/service/s3"
+	s3m "github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 type S3 struct {
 	ctx context.Context
 	c   *s3.S3
+	u   *s3m.Uploader
 	err error
 }
 
@@ -24,6 +27,7 @@ func (g *S3) ensure() bool {
 		g.err = err
 		if err == nil {
 			g.c = s3.New(s)
+			g.u = s3m.NewUploader(s)
 		}
 	}
 	return g.err == nil
@@ -53,12 +57,17 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = g.c.PutObject(&s3.PutObjectInput{
-		Body:   pr,
-		Bucket: &u.Host,
-		Key:    &u.Path,
-	})
-	return pw, err
+	go func() {
+		_, err = g.u.Upload(&s3m.UploadInput{
+			Body:   bufio.NewReader(pr),
+			Bucket: &u.Host,
+			Key:    &u.Path,
+		})
+		if err != nil {
+			println(err.Error())
+		}
+	}()
+	return pw, nil
 }
 
 // sess.Copy(&aws.Config{Region: aws.String("us-east-2")})

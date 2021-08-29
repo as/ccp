@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"go/scanner"
-	exec "golang.org/x/sys/execabs"
 	"io"
 	"io/ioutil"
 	"log"
@@ -20,6 +19,8 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"strings"
+
+	exec "golang.org/x/sys/execabs"
 
 	"golang.org/x/tools/internal/gocommand"
 	"golang.org/x/tools/internal/imports"

@@ -7,10 +7,11 @@ package externalaccount
 import (
 	"context"
 	"fmt"
-	"golang.org/x/oauth2"
 	"net/http"
 	"strconv"
 	"time"
+
+	"golang.org/x/oauth2"
 )
 
 // now aliases time.Now for testing

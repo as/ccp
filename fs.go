@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"time"
 )
 
 var ctx = context.Background()
@@ -45,6 +46,10 @@ func main() {
 	buf := make([]byte, 1024*1024*64)
 	_, err = io.CopyBuffer(dst, src, buf)
 	ck("copy", err)
+	dst.Close()
+	src.Close()
+
+	time.Sleep(5 * time.Second)
 
 }
 
