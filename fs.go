@@ -75,7 +75,7 @@ Loop:
 		case <-done:
 			rx := atomic.LoadInt64(&iostat.rx)
 			tx := atomic.LoadInt64(&iostat.tx)
-			log.Info.Add("src", a[0], "dst", a[1], "rx", rx, "tx", tx).Printf("done")
+			log.Info.Add("src", a[0], "dst", a[1], "rx", rx, "tx", tx, "progress", 100).Printf("done")
 			break Loop
 		case <-tick:
 			rx := atomic.LoadInt64(&iostat.rx)

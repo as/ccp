@@ -2,13 +2,18 @@ package main
 
 import (
 	"io"
+	"os"
+	"strings"
 	"sync/atomic"
 
 	"github.com/as/log"
 )
 
 func init() {
-	log.Service = "ccp"
+	log.Service = os.Getenv("SVC")
+	for _, t := range strings.Split(os.Getenv("TAGS"), ",") {
+		log.Tags = log.Tags.Add(strings.TrimSpace(t))
+	}
 }
 
 var iostat = struct {
