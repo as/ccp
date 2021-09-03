@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -34,11 +35,44 @@ func closeAll() {
 	}
 }
 
+func docp(src, dst string, ec chan<- error) {
+	sfs := driver[uri(src).Scheme]
+	dfs := driver[uri(dst).Scheme]
+
+	{
+		src, err := sfs.Open(src)
+		if err != nil {
+			ec <- fmt.Errorf("open src", err)
+			return
+		}
+		defer src.Close()
+
+		dst, err := dfs.Create(dst)
+		if err != nil {
+			ec <- fmt.Errorf("create dst", err)
+			return
+		}
+		defer dst.Close()
+
+		buf := make([]byte, 1024*1024*64)
+		_, err = io.CopyBuffer(tx{dst}, rx{src}, buf)
+		ec <- err
+	}
+}
+
 func main() {
 	defer closeAll()
 
 	flag.Parse()
 	a := flag.Args()
+	if len(a) == 1 {
+		s3 := &S3{}
+		list, _ := s3.List(a[0])
+		for _, fi := range list {
+			fmt.Printf("ccp %q %q # %d\n", fi.Path, "dst", fi.Size)
+		}
+		os.Exit(0)
+	}
 	if len(a) != 2 {
 		println("usage: ccp src dst")
 		os.Exit(1)
@@ -52,35 +86,27 @@ func main() {
 		println("dst: not supported", a[1])
 		os.Exit(1)
 	}
-	src, err := sfs.Open(a[0])
-	ck("open src", err)
-	defer src.Close()
-
-	dst, err := dfs.Create(a[1])
-	ck("create dst", err)
-	defer dst.Close()
-
-	done := make(chan bool)
-	go func() {
-		buf := make([]byte, 1024*1024*64)
-		_, err = io.CopyBuffer(tx{dst}, rx{src}, buf)
-		ck("copy", err)
-		close(done)
-	}()
+	ec := make(chan error)
+	dst := a[len(a)-1]
+	n := 0
+	for _, src := range a[:len(a)-1] {
+		go docp(src, dst, ec)
+		n++
+	}
 
 	tick := time.NewTicker(time.Second).C
-Loop:
-	for {
+
+	for i := 0; i < n; {
 		select {
-		case <-done:
+		case <-ec:
+			i++
 			rx := atomic.LoadInt64(&iostat.rx)
 			tx := atomic.LoadInt64(&iostat.tx)
-			log.Info.Add("src", a[0], "dst", a[1], "rx", rx, "tx", tx, "progress", 100).Printf("done")
-			break Loop
+			log.Info.Add("rx", rx, "tx", tx, "progress", i*100/n).Printf("done")
 		case <-tick:
 			rx := atomic.LoadInt64(&iostat.rx)
 			tx := atomic.LoadInt64(&iostat.tx)
-			log.Info.Add("src", a[0], "dst", a[1], "rx", rx, "tx", tx).Printf("")
+			log.Info.Add("rx", rx, "tx", tx).Printf("")
 		}
 	}
 }
@@ -90,6 +116,23 @@ func ck(c string, err error) {
 		fmt.Fprintf(os.Stderr, "%s: %v", c, err)
 		os.Exit(1)
 	}
+}
+
+type Info struct {
+	Path string
+	Size int
+}
+
+func prefix(path string) string {
+	n := strings.IndexAny(path, "*?[")
+	if n > 0 {
+		path = path[:n]
+	}
+	n = strings.LastIndex(path, "/")
+	if n > 0 {
+		path = path[:n]
+	}
+	return path
 }
 
 func uri(s string) url.URL {

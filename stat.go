@@ -12,7 +12,10 @@ import (
 func init() {
 	log.Service = os.Getenv("SVC")
 	for _, t := range strings.Split(os.Getenv("TAGS"), ",") {
-		log.Tags = log.Tags.Add(strings.TrimSpace(t))
+		t = strings.TrimSpace(t)
+		if len(t) > 0 {
+			log.Tags = log.Tags.Add(t)
+		}
 	}
 }
 

@@ -5,6 +5,9 @@ import (
 	"context"
 	"io"
 	"os"
+	"strings"
+
+	//	"path"
 	"sync/atomic"
 	"time"
 
@@ -36,6 +39,26 @@ func (g *S3) ensure() bool {
 	return g.err == nil
 }
 
+func (g *S3) List(dir string) (file []Info, err error) {
+	if !g.ensure() {
+		return nil, g.err
+	}
+	u := uri(dir)
+	dir = strings.TrimPrefix(u.Path, "/")
+	o, err := g.c.ListObjects(&s3.ListObjectsInput{
+		Bucket: &u.Host,
+		Prefix: &dir,
+	})
+	for _, v := range o.Contents {
+		u := u
+		u.Path = *v.Key
+		file = append(file,
+			Info{Path: u.String(), Size: int(*v.Size)},
+		)
+	}
+	return file, err
+}
+
 func (g *S3) Open(file string) (io.ReadCloser, error) {
 	if !g.ensure() {
 		return nil, g.err
@@ -51,6 +74,26 @@ func (g *S3) Open(file string) (io.ReadCloser, error) {
 	return o.Body, nil
 }
 
+type pipeline struct {
+	wait chan error
+	err  error
+	io.WriteCloser
+}
+
+func (p *pipeline) Close() error {
+	select {
+	case err, first := <-p.wait:
+		if first {
+			p.err = err
+			if p.err == nil {
+				p.err = p.WriteCloser.Close()
+			}
+			close(p.wait)
+		}
+	}
+	return p.err
+}
+
 func (g *S3) Create(file string) (io.WriteCloser, error) {
 	if !g.ensure() {
 		return nil, g.err
@@ -60,6 +103,11 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	pipectl := &pipeline{
+		wait:        make(chan error, 1),
+		WriteCloser: pw,
+	}
 	go func() {
 		atomic.AddInt64(&g.ctr, +1)
 		defer atomic.AddInt64(&g.ctr, -1)
@@ -68,11 +116,9 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 			Bucket: &u.Host,
 			Key:    &u.Path,
 		})
-		if err != nil {
-			println(err.Error())
-		}
+		pipectl.wait <- err
 	}()
-	return pw, nil
+	return pipectl, nil
 }
 
 func (g *S3) Close() error {
