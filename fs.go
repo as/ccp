@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	bs    = flag.Int("bs", 64*1024*1024, "block size for copy operation")
+	bs    = flag.Int("bs", 16*1024*1024, "block size for copy operation")
 	dry   = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
 	quiet = flag.Bool("q", false, "dont print any progress output")
 )
@@ -137,7 +137,13 @@ func progress(done, total int) {
 	rx := atomic.LoadInt64(&iostat.rx)
 	tx := atomic.LoadInt64(&iostat.tx)
 	dur := time.Since(procstart)
-	bps := tx / int64(dur/time.Second)
+	bps := int64(0)
+	if s := dur / time.Second; s > 0 {
+		bps = tx / int64(s)
+	}
+	if txquota == 0 {
+		txquota = -1
+	}
 	log.Info.Add(
 		"rx", rx,
 		"tx", tx,
