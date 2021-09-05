@@ -17,8 +17,9 @@ import (
 )
 
 var (
-	bs  = flag.Int("bs", 64*1024*1024, "block size for copy operation")
-	dry = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
+	bs    = flag.Int("bs", 64*1024*1024, "block size for copy operation")
+	dry   = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
+	quiet = flag.Bool("q", false, "dont print any progress output")
 )
 
 var (
@@ -94,8 +95,7 @@ func main() {
 	ec := make(chan error)
 	n := 0
 	for _, src := range list {
-		dst := uri(a[1])
-		dst.Path = path.Join(dst.Path, src.Path)
+		dst := src2dst(a[0], src.String(), a[1])
 		if *dry {
 			fmt.Printf("ccp %q %q # %d\n", src, dst.String(), src.Size)
 		} else {
@@ -108,32 +108,56 @@ func main() {
 		os.Exit(0)
 	}
 
-	nerr := 0
 	tick := time.NewTicker(time.Second).C
+
 	for i := 0; i < n; {
 		select {
 		case err := <-ec:
 			i++
 			if err != nil {
 				nerr++
+				log.Error.Add("err", err).Printf("copy error")
 			}
-			log.Info.Add("err", err, "total", n, "done", i).Printf("")
 		case <-tick:
-			progress()
+			progress(i, n)
 		}
 	}
-	progress()
+	progress(n, n)
 	os.Exit(nerr)
 }
 
+var nerr = 0
 var txquota = 0
+var procstart = time.Now()
 
-func progress() {
+func progress(done, total int) {
+	if *quiet {
+		return
+	}
 	rx := atomic.LoadInt64(&iostat.rx)
 	tx := atomic.LoadInt64(&iostat.tx)
-	log.Info.Add("rx", rx, "tx", tx, "quota", txquota, "progress", tx*100/int64(txquota)).Printf("")
+	dur := time.Since(procstart)
+	bps := tx / int64(dur/time.Second)
+	log.Info.Add(
+		"rx", rx,
+		"tx", tx,
+		"total", txquota,
+		"file.done", done,
+		"file.total", total,
+		"file.errors", nerr,
+		"mbps", bps/(1024*1024),
+		"progress", tx*100/int64(txquota),
+		"runtime", dur.Seconds(),
+	).Printf("")
 }
 
+func src2dst(prefix, src, dst string) url.URL {
+	su := uri(src)
+	du := uri(dst)
+	su.Path = strings.TrimPrefix(su.Path, uri(prefix).Path)
+	du.Path = path.Join(du.Path, su.Path)
+	return du
+}
 func ck(c string, err error) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s: %v", c, err)
