@@ -23,6 +23,11 @@ func (g *GS) ensure() bool {
 	return g.err == nil
 }
 
+func (g *GS) List(dir string) (file []Info, err error) {
+	u := uri(dir)
+	return []Info{{URL: &u}}, errNotImplemented
+}
+
 func (g *GS) Open(file string) (io.ReadCloser, error) {
 	if !g.ensure() {
 		return nil, g.err

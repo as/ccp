@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -14,9 +16,19 @@ import (
 	"github.com/as/log"
 )
 
+var (
+	bs  = flag.Int("bs", 64*1024*1024, "block size for copy operation")
+	dry = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
+)
+
+var (
+	errNotImplemented = errors.New("not yet implemented")
+)
+
 var ctx = context.Background()
 
 var driver = map[string]interface {
+	List(string) ([]Info, error)
 	Open(string) (io.ReadCloser, error)
 	Create(string) (io.WriteCloser, error)
 	Close() error
@@ -54,7 +66,7 @@ func docp(src, dst string, ec chan<- error) {
 		}
 		defer dst.Close()
 
-		buf := make([]byte, 1024*1024*64)
+		buf := make([]byte, *bs)
 		_, err = io.CopyBuffer(tx{dst}, rx{src}, buf)
 		ec <- err
 	}
@@ -65,16 +77,8 @@ func main() {
 
 	flag.Parse()
 	a := flag.Args()
-	if len(a) == 1 {
-		s3 := &S3{}
-		list, _ := s3.List(a[0])
-		for _, fi := range list {
-			fmt.Printf("ccp %q %q # %d\n", fi.Path, "dst", fi.Size)
-		}
-		os.Exit(0)
-	}
 	if len(a) != 2 {
-		println("usage: ccp src dst")
+		println("usage: ccp src... dst")
 		os.Exit(1)
 	}
 	sfs, dfs := driver[uri(a[0]).Scheme], driver[uri(a[1]).Scheme]
@@ -86,29 +90,48 @@ func main() {
 		println("dst: not supported", a[1])
 		os.Exit(1)
 	}
+	list, _ := sfs.List(a[0])
 	ec := make(chan error)
-	dst := a[len(a)-1]
 	n := 0
-	for _, src := range a[:len(a)-1] {
-		go docp(src, dst, ec)
-		n++
-	}
-
-	tick := time.NewTicker(time.Second).C
-
-	for i := 0; i < n; {
-		select {
-		case <-ec:
-			i++
-			rx := atomic.LoadInt64(&iostat.rx)
-			tx := atomic.LoadInt64(&iostat.tx)
-			log.Info.Add("rx", rx, "tx", tx, "progress", i*100/n).Printf("done")
-		case <-tick:
-			rx := atomic.LoadInt64(&iostat.rx)
-			tx := atomic.LoadInt64(&iostat.tx)
-			log.Info.Add("rx", rx, "tx", tx).Printf("")
+	for _, src := range list {
+		dst := uri(a[1])
+		dst.Path = path.Join(dst.Path, src.Path)
+		if *dry {
+			fmt.Printf("ccp %q %q # %d\n", src, dst.String(), src.Size)
+		} else {
+			txquota += src.Size
+			go docp(src.String(), dst.String(), ec)
+			n++
 		}
 	}
+	if *dry {
+		os.Exit(0)
+	}
+
+	nerr := 0
+	tick := time.NewTicker(time.Second).C
+	for i := 0; i < n; {
+		select {
+		case err := <-ec:
+			i++
+			if err != nil {
+				nerr++
+			}
+			log.Info.Add("err", err, "total", n, "done", i).Printf("")
+		case <-tick:
+			progress()
+		}
+	}
+	progress()
+	os.Exit(nerr)
+}
+
+var txquota = 0
+
+func progress() {
+	rx := atomic.LoadInt64(&iostat.rx)
+	tx := atomic.LoadInt64(&iostat.tx)
+	log.Info.Add("rx", rx, "tx", tx, "quota", txquota, "progress", tx*100/int64(txquota)).Printf("")
 }
 
 func ck(c string, err error) {
@@ -119,7 +142,8 @@ func ck(c string, err error) {
 }
 
 type Info struct {
-	Path string
+	// invariant: *url.URL is never nil
+	*url.URL
 	Size int
 }
 

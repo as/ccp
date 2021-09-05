@@ -18,6 +18,11 @@ func (g *HTTP) ensure() bool {
 	return true
 }
 
+func (g *HTTP) List(dir string) (file []Info, err error) {
+	u := uri(dir)
+	return []Info{{URL: &u}}, nil
+}
+
 func (f HTTP) Open(file string) (io.ReadCloser, error) {
 	f.ensure()
 	req, _ := http.NewRequestWithContext(f.ctx, "GET", file, nil)

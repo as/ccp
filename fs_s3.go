@@ -53,7 +53,7 @@ func (g *S3) List(dir string) (file []Info, err error) {
 		u := u
 		u.Path = *v.Key
 		file = append(file,
-			Info{Path: u.String(), Size: int(*v.Size)},
+			Info{URL: &u, Size: int(*v.Size)},
 		)
 	}
 	return file, err
