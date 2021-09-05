@@ -58,7 +58,6 @@ func docp(src, dst string, ec chan<- error) {
 			ec <- fmt.Errorf("open src", err)
 			return
 		}
-		defer src.Close()
 
 		dst, err := dfs.Create(dst)
 		if err != nil {
@@ -66,6 +65,7 @@ func docp(src, dst string, ec chan<- error) {
 			return
 		}
 		defer dst.Close()
+		defer src.Close()
 
 		buf := make([]byte, *bs)
 		_, err = io.CopyBuffer(tx{dst}, rx{src}, buf)
@@ -123,7 +123,9 @@ func main() {
 		}
 	}
 	progress(n, n)
-	os.Exit(nerr)
+	if nerr != 0 {
+		os.Exit(nerr)
+	}
 }
 
 var nerr = 0

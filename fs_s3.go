@@ -81,13 +81,11 @@ type pipeline struct {
 }
 
 func (p *pipeline) Close() error {
+	p.WriteCloser.Close()
 	select {
 	case err, first := <-p.wait:
 		if first {
 			p.err = err
-			if p.err == nil {
-				p.err = p.WriteCloser.Close()
-			}
 			close(p.wait)
 		}
 	}
@@ -105,7 +103,7 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 	}
 
 	pipectl := &pipeline{
-		wait:        make(chan error, 1),
+		wait:        make(chan error),
 		WriteCloser: pw,
 	}
 	go func() {
