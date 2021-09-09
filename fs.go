@@ -55,13 +55,13 @@ func docp(src, dst string, ec chan<- error) {
 	{
 		src, err := sfs.Open(src)
 		if err != nil {
-			ec <- fmt.Errorf("open src", err)
+			ec <- fmt.Errorf("open src: %w", err)
 			return
 		}
 
 		dst, err := dfs.Create(dst)
 		if err != nil {
-			ec <- fmt.Errorf("create dst", err)
+			ec <- fmt.Errorf("create dst: %w", err)
 			return
 		}
 		defer dst.Close()
@@ -91,7 +91,10 @@ func main() {
 		println("dst: not supported", a[1])
 		os.Exit(1)
 	}
-	list, _ := sfs.List(a[0])
+	list, err := sfs.List(a[0])
+	if err != nil {
+		log.Error.Add("action", "list", "err", err).Printf("")
+	}
 	ec := make(chan error)
 	n := 0
 	for _, src := range list {

@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -28,6 +30,7 @@ func (g *S3) ensure() bool {
 	if g.ctx == nil {
 		g.ctx = context.Background()
 	}
+	<-regionDetected
 	if g.c == nil {
 		s, err := session.NewSession()
 		g.err = err
@@ -128,3 +131,36 @@ func (g *S3) Close() error {
 }
 
 // sess.Copy(&aws.Config{Region: aws.String("us-east-2")})
+
+var regionDetected = make(chan bool)
+
+func init() {
+	go func() {
+		os.Setenv("AWS_REGION", awsRegion())
+		close(regionDetected)
+	}()
+}
+
+func awsRegion() string {
+	r := os.Getenv("AWS_REGION")
+	if r != "" {
+		return r
+	}
+
+	ID := struct {
+		Region string
+	}{}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", idURL, nil)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode != 200 {
+		return ""
+	}
+	json.NewDecoder(resp.Body).Decode(&ID)
+	return ID.Region
+}
+
+const idURL = "http://169.254.169.254/latest/dynamic/instance-identity/document"
