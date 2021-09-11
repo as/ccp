@@ -9,12 +9,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/oauth2"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"golang.org/x/oauth2"
 )
 
 // generateAccesstokenReq is used for service account impersonation

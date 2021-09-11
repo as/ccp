@@ -3,7 +3,7 @@
 package imports
 
 var stdlib = map[string][]string{
-	"archive/tar": {
+	"archive/tar": []string{
 		"ErrFieldTooLong",
 		"ErrHeader",
 		"ErrWriteAfterClose",
@@ -34,7 +34,7 @@ var stdlib = map[string][]string{
 		"TypeXHeader",
 		"Writer",
 	},
-	"archive/zip": {
+	"archive/zip": []string{
 		"Compressor",
 		"Decompressor",
 		"Deflate",
@@ -54,7 +54,7 @@ var stdlib = map[string][]string{
 		"Store",
 		"Writer",
 	},
-	"bufio": {
+	"bufio": []string{
 		"ErrAdvanceTooFar",
 		"ErrBadReadCount",
 		"ErrBufferFull",
@@ -81,7 +81,7 @@ var stdlib = map[string][]string{
 		"SplitFunc",
 		"Writer",
 	},
-	"bytes": {
+	"bytes": []string{
 		"Buffer",
 		"Compare",
 		"Contains",
@@ -137,11 +137,11 @@ var stdlib = map[string][]string{
 		"TrimSpace",
 		"TrimSuffix",
 	},
-	"compress/bzip2": {
+	"compress/bzip2": []string{
 		"NewReader",
 		"StructuralError",
 	},
-	"compress/flate": {
+	"compress/flate": []string{
 		"BestCompression",
 		"BestSpeed",
 		"CorruptInputError",
@@ -159,7 +159,7 @@ var stdlib = map[string][]string{
 		"WriteError",
 		"Writer",
 	},
-	"compress/gzip": {
+	"compress/gzip": []string{
 		"BestCompression",
 		"BestSpeed",
 		"DefaultCompression",
@@ -174,14 +174,14 @@ var stdlib = map[string][]string{
 		"Reader",
 		"Writer",
 	},
-	"compress/lzw": {
+	"compress/lzw": []string{
 		"LSB",
 		"MSB",
 		"NewReader",
 		"NewWriter",
 		"Order",
 	},
-	"compress/zlib": {
+	"compress/zlib": []string{
 		"BestCompression",
 		"BestSpeed",
 		"DefaultCompression",
@@ -198,7 +198,7 @@ var stdlib = map[string][]string{
 		"Resetter",
 		"Writer",
 	},
-	"container/heap": {
+	"container/heap": []string{
 		"Fix",
 		"Init",
 		"Interface",
@@ -206,16 +206,16 @@ var stdlib = map[string][]string{
 		"Push",
 		"Remove",
 	},
-	"container/list": {
+	"container/list": []string{
 		"Element",
 		"List",
 		"New",
 	},
-	"container/ring": {
+	"container/ring": []string{
 		"New",
 		"Ring",
 	},
-	"context": {
+	"context": []string{
 		"Background",
 		"CancelFunc",
 		"Canceled",
@@ -227,7 +227,7 @@ var stdlib = map[string][]string{
 		"WithTimeout",
 		"WithValue",
 	},
-	"crypto": {
+	"crypto": []string{
 		"BLAKE2b_256",
 		"BLAKE2b_384",
 		"BLAKE2b_512",
@@ -256,12 +256,12 @@ var stdlib = map[string][]string{
 		"Signer",
 		"SignerOpts",
 	},
-	"crypto/aes": {
+	"crypto/aes": []string{
 		"BlockSize",
 		"KeySizeError",
 		"NewCipher",
 	},
-	"crypto/cipher": {
+	"crypto/cipher": []string{
 		"AEAD",
 		"Block",
 		"BlockMode",
@@ -278,13 +278,13 @@ var stdlib = map[string][]string{
 		"StreamReader",
 		"StreamWriter",
 	},
-	"crypto/des": {
+	"crypto/des": []string{
 		"BlockSize",
 		"KeySizeError",
 		"NewCipher",
 		"NewTripleDESCipher",
 	},
-	"crypto/dsa": {
+	"crypto/dsa": []string{
 		"ErrInvalidPublicKey",
 		"GenerateKey",
 		"GenerateParameters",
@@ -299,7 +299,7 @@ var stdlib = map[string][]string{
 		"Sign",
 		"Verify",
 	},
-	"crypto/ecdsa": {
+	"crypto/ecdsa": []string{
 		"GenerateKey",
 		"PrivateKey",
 		"PublicKey",
@@ -308,7 +308,7 @@ var stdlib = map[string][]string{
 		"Verify",
 		"VerifyASN1",
 	},
-	"crypto/ed25519": {
+	"crypto/ed25519": []string{
 		"GenerateKey",
 		"NewKeyFromSeed",
 		"PrivateKey",
@@ -320,7 +320,7 @@ var stdlib = map[string][]string{
 		"SignatureSize",
 		"Verify",
 	},
-	"crypto/elliptic": {
+	"crypto/elliptic": []string{
 		"Curve",
 		"CurveParams",
 		"GenerateKey",
@@ -333,28 +333,28 @@ var stdlib = map[string][]string{
 		"Unmarshal",
 		"UnmarshalCompressed",
 	},
-	"crypto/hmac": {
+	"crypto/hmac": []string{
 		"Equal",
 		"New",
 	},
-	"crypto/md5": {
+	"crypto/md5": []string{
 		"BlockSize",
 		"New",
 		"Size",
 		"Sum",
 	},
-	"crypto/rand": {
+	"crypto/rand": []string{
 		"Int",
 		"Prime",
 		"Read",
 		"Reader",
 	},
-	"crypto/rc4": {
+	"crypto/rc4": []string{
 		"Cipher",
 		"KeySizeError",
 		"NewCipher",
 	},
-	"crypto/rsa": {
+	"crypto/rsa": []string{
 		"CRTValue",
 		"DecryptOAEP",
 		"DecryptPKCS1v15",
@@ -379,13 +379,13 @@ var stdlib = map[string][]string{
 		"VerifyPKCS1v15",
 		"VerifyPSS",
 	},
-	"crypto/sha1": {
+	"crypto/sha1": []string{
 		"BlockSize",
 		"New",
 		"Size",
 		"Sum",
 	},
-	"crypto/sha256": {
+	"crypto/sha256": []string{
 		"BlockSize",
 		"New",
 		"New224",
@@ -394,7 +394,7 @@ var stdlib = map[string][]string{
 		"Sum224",
 		"Sum256",
 	},
-	"crypto/sha512": {
+	"crypto/sha512": []string{
 		"BlockSize",
 		"New",
 		"New384",
@@ -409,7 +409,7 @@ var stdlib = map[string][]string{
 		"Sum512_224",
 		"Sum512_256",
 	},
-	"crypto/subtle": {
+	"crypto/subtle": []string{
 		"ConstantTimeByteEq",
 		"ConstantTimeCompare",
 		"ConstantTimeCopy",
@@ -417,7 +417,7 @@ var stdlib = map[string][]string{
 		"ConstantTimeLessOrEq",
 		"ConstantTimeSelect",
 	},
-	"crypto/tls": {
+	"crypto/tls": []string{
 		"Certificate",
 		"CertificateRequestInfo",
 		"CipherSuite",
@@ -503,7 +503,7 @@ var stdlib = map[string][]string{
 		"X25519",
 		"X509KeyPair",
 	},
-	"crypto/x509": {
+	"crypto/x509": []string{
 		"CANotAuthorizedForExtKeyUsage",
 		"CANotAuthorizedForThisName",
 		"CertPool",
@@ -608,7 +608,7 @@ var stdlib = map[string][]string{
 		"UnknownSignatureAlgorithm",
 		"VerifyOptions",
 	},
-	"crypto/x509/pkix": {
+	"crypto/x509/pkix": []string{
 		"AlgorithmIdentifier",
 		"AttributeTypeAndValue",
 		"AttributeTypeAndValueSET",
@@ -620,7 +620,7 @@ var stdlib = map[string][]string{
 		"RevokedCertificate",
 		"TBSCertificateList",
 	},
-	"database/sql": {
+	"database/sql": []string{
 		"ColumnType",
 		"Conn",
 		"DB",
@@ -659,7 +659,7 @@ var stdlib = map[string][]string{
 		"Tx",
 		"TxOptions",
 	},
-	"database/sql/driver": {
+	"database/sql/driver": []string{
 		"Bool",
 		"ColumnConverter",
 		"Conn",
@@ -707,7 +707,7 @@ var stdlib = map[string][]string{
 		"ValueConverter",
 		"Valuer",
 	},
-	"debug/dwarf": {
+	"debug/dwarf": []string{
 		"AddrType",
 		"ArrayType",
 		"Attr",
@@ -958,7 +958,7 @@ var stdlib = map[string][]string{
 		"UnsupportedType",
 		"VoidType",
 	},
-	"debug/elf": {
+	"debug/elf": []string{
 		"ARM_MAGIC_TRAMP_NUMBER",
 		"COMPRESS_HIOS",
 		"COMPRESS_HIPROC",
@@ -2303,7 +2303,7 @@ var stdlib = map[string][]string{
 		"Type",
 		"Version",
 	},
-	"debug/gosym": {
+	"debug/gosym": []string{
 		"DecodingError",
 		"Func",
 		"LineTable",
@@ -2315,7 +2315,7 @@ var stdlib = map[string][]string{
 		"UnknownFileError",
 		"UnknownLineError",
 	},
-	"debug/macho": {
+	"debug/macho": []string{
 		"ARM64_RELOC_ADDEND",
 		"ARM64_RELOC_BRANCH26",
 		"ARM64_RELOC_GOT_LOAD_PAGE21",
@@ -2445,7 +2445,7 @@ var stdlib = map[string][]string{
 		"X86_64_RELOC_TLV",
 		"X86_64_RELOC_UNSIGNED",
 	},
-	"debug/pe": {
+	"debug/pe": []string{
 		"COFFSymbol",
 		"COFFSymbolSize",
 		"DataDirectory",
@@ -2541,7 +2541,7 @@ var stdlib = map[string][]string{
 		"StringTable",
 		"Symbol",
 	},
-	"debug/plan9obj": {
+	"debug/plan9obj": []string{
 		"File",
 		"FileHeader",
 		"Magic386",
@@ -2554,16 +2554,16 @@ var stdlib = map[string][]string{
 		"SectionHeader",
 		"Sym",
 	},
-	"embed": {
+	"embed": []string{
 		"FS",
 	},
-	"encoding": {
+	"encoding": []string{
 		"BinaryMarshaler",
 		"BinaryUnmarshaler",
 		"TextMarshaler",
 		"TextUnmarshaler",
 	},
-	"encoding/ascii85": {
+	"encoding/ascii85": []string{
 		"CorruptInputError",
 		"Decode",
 		"Encode",
@@ -2571,7 +2571,7 @@ var stdlib = map[string][]string{
 		"NewDecoder",
 		"NewEncoder",
 	},
-	"encoding/asn1": {
+	"encoding/asn1": []string{
 		"BitString",
 		"ClassApplication",
 		"ClassContextSpecific",
@@ -2609,7 +2609,7 @@ var stdlib = map[string][]string{
 		"Unmarshal",
 		"UnmarshalWithParams",
 	},
-	"encoding/base32": {
+	"encoding/base32": []string{
 		"CorruptInputError",
 		"Encoding",
 		"HexEncoding",
@@ -2620,7 +2620,7 @@ var stdlib = map[string][]string{
 		"StdEncoding",
 		"StdPadding",
 	},
-	"encoding/base64": {
+	"encoding/base64": []string{
 		"CorruptInputError",
 		"Encoding",
 		"NewDecoder",
@@ -2633,7 +2633,7 @@ var stdlib = map[string][]string{
 		"StdPadding",
 		"URLEncoding",
 	},
-	"encoding/binary": {
+	"encoding/binary": []string{
 		"BigEndian",
 		"ByteOrder",
 		"LittleEndian",
@@ -2650,7 +2650,7 @@ var stdlib = map[string][]string{
 		"Varint",
 		"Write",
 	},
-	"encoding/csv": {
+	"encoding/csv": []string{
 		"ErrBareQuote",
 		"ErrFieldCount",
 		"ErrQuote",
@@ -2661,7 +2661,7 @@ var stdlib = map[string][]string{
 		"Reader",
 		"Writer",
 	},
-	"encoding/gob": {
+	"encoding/gob": []string{
 		"CommonType",
 		"Decoder",
 		"Encoder",
@@ -2672,7 +2672,7 @@ var stdlib = map[string][]string{
 		"Register",
 		"RegisterName",
 	},
-	"encoding/hex": {
+	"encoding/hex": []string{
 		"Decode",
 		"DecodeString",
 		"DecodedLen",
@@ -2686,7 +2686,7 @@ var stdlib = map[string][]string{
 		"NewDecoder",
 		"NewEncoder",
 	},
-	"encoding/json": {
+	"encoding/json": []string{
 		"Compact",
 		"Decoder",
 		"Delim",
@@ -2713,13 +2713,13 @@ var stdlib = map[string][]string{
 		"UnsupportedValueError",
 		"Valid",
 	},
-	"encoding/pem": {
+	"encoding/pem": []string{
 		"Block",
 		"Decode",
 		"Encode",
 		"EncodeToMemory",
 	},
-	"encoding/xml": {
+	"encoding/xml": []string{
 		"Attr",
 		"CharData",
 		"Comment",
@@ -2753,13 +2753,13 @@ var stdlib = map[string][]string{
 		"UnmarshalerAttr",
 		"UnsupportedTypeError",
 	},
-	"errors": {
+	"errors": []string{
 		"As",
 		"Is",
 		"New",
 		"Unwrap",
 	},
-	"expvar": {
+	"expvar": []string{
 		"Do",
 		"Float",
 		"Func",
@@ -2776,7 +2776,7 @@ var stdlib = map[string][]string{
 		"String",
 		"Var",
 	},
-	"flag": {
+	"flag": []string{
 		"Arg",
 		"Args",
 		"Bool",
@@ -2820,7 +2820,7 @@ var stdlib = map[string][]string{
 		"Visit",
 		"VisitAll",
 	},
-	"fmt": {
+	"fmt": []string{
 		"Errorf",
 		"Formatter",
 		"Fprint",
@@ -2847,7 +2847,7 @@ var stdlib = map[string][]string{
 		"State",
 		"Stringer",
 	},
-	"go/ast": {
+	"go/ast": []string{
 		"ArrayType",
 		"AssignStmt",
 		"Bad",
@@ -2949,7 +2949,7 @@ var stdlib = map[string][]string{
 		"Visitor",
 		"Walk",
 	},
-	"go/build": {
+	"go/build": []string{
 		"AllowBinary",
 		"ArchChar",
 		"Context",
@@ -2966,7 +2966,7 @@ var stdlib = map[string][]string{
 		"Package",
 		"ToolDir",
 	},
-	"go/build/constraint": {
+	"go/build/constraint": []string{
 		"AndExpr",
 		"Expr",
 		"IsGoBuild",
@@ -2978,7 +2978,7 @@ var stdlib = map[string][]string{
 		"SyntaxError",
 		"TagExpr",
 	},
-	"go/constant": {
+	"go/constant": []string{
 		"BinaryOp",
 		"BitLen",
 		"Bool",
@@ -3019,7 +3019,7 @@ var stdlib = map[string][]string{
 		"Val",
 		"Value",
 	},
-	"go/doc": {
+	"go/doc": []string{
 		"AllDecls",
 		"AllMethods",
 		"Example",
@@ -3040,17 +3040,17 @@ var stdlib = map[string][]string{
 		"Type",
 		"Value",
 	},
-	"go/format": {
+	"go/format": []string{
 		"Node",
 		"Source",
 	},
-	"go/importer": {
+	"go/importer": []string{
 		"Default",
 		"For",
 		"ForCompiler",
 		"Lookup",
 	},
-	"go/parser": {
+	"go/parser": []string{
 		"AllErrors",
 		"DeclarationErrors",
 		"ImportsOnly",
@@ -3064,7 +3064,7 @@ var stdlib = map[string][]string{
 		"SpuriousErrors",
 		"Trace",
 	},
-	"go/printer": {
+	"go/printer": []string{
 		"CommentedNode",
 		"Config",
 		"Fprint",
@@ -3074,7 +3074,7 @@ var stdlib = map[string][]string{
 		"TabIndent",
 		"UseSpaces",
 	},
-	"go/scanner": {
+	"go/scanner": []string{
 		"Error",
 		"ErrorHandler",
 		"ErrorList",
@@ -3083,7 +3083,7 @@ var stdlib = map[string][]string{
 		"ScanComments",
 		"Scanner",
 	},
-	"go/token": {
+	"go/token": []string{
 		"ADD",
 		"ADD_ASSIGN",
 		"AND",
@@ -3180,7 +3180,7 @@ var stdlib = map[string][]string{
 		"XOR",
 		"XOR_ASSIGN",
 	},
-	"go/types": {
+	"go/types": []string{
 		"Array",
 		"AssertableTo",
 		"AssignableTo",
@@ -3317,17 +3317,17 @@ var stdlib = map[string][]string{
 		"WriteSignature",
 		"WriteType",
 	},
-	"hash": {
+	"hash": []string{
 		"Hash",
 		"Hash32",
 		"Hash64",
 	},
-	"hash/adler32": {
+	"hash/adler32": []string{
 		"Checksum",
 		"New",
 		"Size",
 	},
-	"hash/crc32": {
+	"hash/crc32": []string{
 		"Castagnoli",
 		"Checksum",
 		"ChecksumIEEE",
@@ -3341,7 +3341,7 @@ var stdlib = map[string][]string{
 		"Table",
 		"Update",
 	},
-	"hash/crc64": {
+	"hash/crc64": []string{
 		"Checksum",
 		"ECMA",
 		"ISO",
@@ -3351,7 +3351,7 @@ var stdlib = map[string][]string{
 		"Table",
 		"Update",
 	},
-	"hash/fnv": {
+	"hash/fnv": []string{
 		"New128",
 		"New128a",
 		"New32",
@@ -3359,16 +3359,16 @@ var stdlib = map[string][]string{
 		"New64",
 		"New64a",
 	},
-	"hash/maphash": {
+	"hash/maphash": []string{
 		"Hash",
 		"MakeSeed",
 		"Seed",
 	},
-	"html": {
+	"html": []string{
 		"EscapeString",
 		"UnescapeString",
 	},
-	"html/template": {
+	"html/template": []string{
 		"CSS",
 		"ErrAmbigContext",
 		"ErrBadHTML",
@@ -3406,7 +3406,7 @@ var stdlib = map[string][]string{
 		"URL",
 		"URLQueryEscaper",
 	},
-	"image": {
+	"image": []string{
 		"Alpha",
 		"Alpha16",
 		"Black",
@@ -3458,7 +3458,7 @@ var stdlib = map[string][]string{
 		"ZP",
 		"ZR",
 	},
-	"image/color": {
+	"image/color": []string{
 		"Alpha",
 		"Alpha16",
 		"Alpha16Model",
@@ -3494,11 +3494,11 @@ var stdlib = map[string][]string{
 		"YCbCrModel",
 		"YCbCrToRGB",
 	},
-	"image/color/palette": {
+	"image/color/palette": []string{
 		"Plan9",
 		"WebSafe",
 	},
-	"image/draw": {
+	"image/draw": []string{
 		"Draw",
 		"DrawMask",
 		"Drawer",
@@ -3509,7 +3509,7 @@ var stdlib = map[string][]string{
 		"Quantizer",
 		"Src",
 	},
-	"image/gif": {
+	"image/gif": []string{
 		"Decode",
 		"DecodeAll",
 		"DecodeConfig",
@@ -3521,7 +3521,7 @@ var stdlib = map[string][]string{
 		"GIF",
 		"Options",
 	},
-	"image/jpeg": {
+	"image/jpeg": []string{
 		"Decode",
 		"DecodeConfig",
 		"DefaultQuality",
@@ -3531,7 +3531,7 @@ var stdlib = map[string][]string{
 		"Reader",
 		"UnsupportedError",
 	},
-	"image/png": {
+	"image/png": []string{
 		"BestCompression",
 		"BestSpeed",
 		"CompressionLevel",
@@ -3546,11 +3546,11 @@ var stdlib = map[string][]string{
 		"NoCompression",
 		"UnsupportedError",
 	},
-	"index/suffixarray": {
+	"index/suffixarray": []string{
 		"Index",
 		"New",
 	},
-	"io": {
+	"io": []string{
 		"ByteReader",
 		"ByteScanner",
 		"ByteWriter",
@@ -3602,7 +3602,7 @@ var stdlib = map[string][]string{
 		"WriterAt",
 		"WriterTo",
 	},
-	"io/fs": {
+	"io/fs": []string{
 		"DirEntry",
 		"ErrClosed",
 		"ErrExist",
@@ -3645,7 +3645,7 @@ var stdlib = map[string][]string{
 		"WalkDir",
 		"WalkDirFunc",
 	},
-	"io/ioutil": {
+	"io/ioutil": []string{
 		"Discard",
 		"NopCloser",
 		"ReadAll",
@@ -3655,7 +3655,7 @@ var stdlib = map[string][]string{
 		"TempFile",
 		"WriteFile",
 	},
-	"log": {
+	"log": []string{
 		"Default",
 		"Fatal",
 		"Fatalf",
@@ -3684,7 +3684,7 @@ var stdlib = map[string][]string{
 		"SetPrefix",
 		"Writer",
 	},
-	"log/syslog": {
+	"log/syslog": []string{
 		"Dial",
 		"LOG_ALERT",
 		"LOG_AUTH",
@@ -3719,7 +3719,7 @@ var stdlib = map[string][]string{
 		"Priority",
 		"Writer",
 	},
-	"math": {
+	"math": []string{
 		"Abs",
 		"Acos",
 		"Acosh",
@@ -3815,7 +3815,7 @@ var stdlib = map[string][]string{
 		"Y1",
 		"Yn",
 	},
-	"math/big": {
+	"math/big": []string{
 		"Above",
 		"Accuracy",
 		"AwayFromZero",
@@ -3842,7 +3842,7 @@ var stdlib = map[string][]string{
 		"ToZero",
 		"Word",
 	},
-	"math/bits": {
+	"math/bits": []string{
 		"Add",
 		"Add32",
 		"Add64",
@@ -3894,7 +3894,7 @@ var stdlib = map[string][]string{
 		"TrailingZeros8",
 		"UintSize",
 	},
-	"math/cmplx": {
+	"math/cmplx": []string{
 		"Abs",
 		"Acos",
 		"Acosh",
@@ -3923,7 +3923,7 @@ var stdlib = map[string][]string{
 		"Tan",
 		"Tanh",
 	},
-	"math/rand": {
+	"math/rand": []string{
 		"ExpFloat64",
 		"Float32",
 		"Float64",
@@ -3948,7 +3948,7 @@ var stdlib = map[string][]string{
 		"Uint64",
 		"Zipf",
 	},
-	"mime": {
+	"mime": []string{
 		"AddExtensionType",
 		"BEncoding",
 		"ErrInvalidMediaParameter",
@@ -3960,7 +3960,7 @@ var stdlib = map[string][]string{
 		"WordDecoder",
 		"WordEncoder",
 	},
-	"mime/multipart": {
+	"mime/multipart": []string{
 		"ErrMessageTooLarge",
 		"File",
 		"FileHeader",
@@ -3971,13 +3971,13 @@ var stdlib = map[string][]string{
 		"Reader",
 		"Writer",
 	},
-	"mime/quotedprintable": {
+	"mime/quotedprintable": []string{
 		"NewReader",
 		"NewWriter",
 		"Reader",
 		"Writer",
 	},
-	"net": {
+	"net": []string{
 		"Addr",
 		"AddrError",
 		"Buffers",
@@ -4077,7 +4077,7 @@ var stdlib = map[string][]string{
 		"UnixListener",
 		"UnknownNetworkError",
 	},
-	"net/http": {
+	"net/http": []string{
 		"CanonicalHeaderKey",
 		"Client",
 		"CloseNotifier",
@@ -4250,25 +4250,25 @@ var stdlib = map[string][]string{
 		"TrailerPrefix",
 		"Transport",
 	},
-	"net/http/cgi": {
+	"net/http/cgi": []string{
 		"Handler",
 		"Request",
 		"RequestFromMap",
 		"Serve",
 	},
-	"net/http/cookiejar": {
+	"net/http/cookiejar": []string{
 		"Jar",
 		"New",
 		"Options",
 		"PublicSuffixList",
 	},
-	"net/http/fcgi": {
+	"net/http/fcgi": []string{
 		"ErrConnClosed",
 		"ErrRequestAborted",
 		"ProcessEnv",
 		"Serve",
 	},
-	"net/http/httptest": {
+	"net/http/httptest": []string{
 		"DefaultRemoteAddr",
 		"NewRecorder",
 		"NewRequest",
@@ -4278,7 +4278,7 @@ var stdlib = map[string][]string{
 		"ResponseRecorder",
 		"Server",
 	},
-	"net/http/httptrace": {
+	"net/http/httptrace": []string{
 		"ClientTrace",
 		"ContextClientTrace",
 		"DNSDoneInfo",
@@ -4287,7 +4287,7 @@ var stdlib = map[string][]string{
 		"WithClientTrace",
 		"WroteRequestInfo",
 	},
-	"net/http/httputil": {
+	"net/http/httputil": []string{
 		"BufferPool",
 		"ClientConn",
 		"DumpRequest",
@@ -4306,7 +4306,7 @@ var stdlib = map[string][]string{
 		"ReverseProxy",
 		"ServerConn",
 	},
-	"net/http/pprof": {
+	"net/http/pprof": []string{
 		"Cmdline",
 		"Handler",
 		"Index",
@@ -4314,7 +4314,7 @@ var stdlib = map[string][]string{
 		"Symbol",
 		"Trace",
 	},
-	"net/mail": {
+	"net/mail": []string{
 		"Address",
 		"AddressParser",
 		"ErrHeaderNotPresent",
@@ -4325,7 +4325,7 @@ var stdlib = map[string][]string{
 		"ParseDate",
 		"ReadMessage",
 	},
-	"net/rpc": {
+	"net/rpc": []string{
 		"Accept",
 		"Call",
 		"Client",
@@ -4352,14 +4352,14 @@ var stdlib = map[string][]string{
 		"ServerCodec",
 		"ServerError",
 	},
-	"net/rpc/jsonrpc": {
+	"net/rpc/jsonrpc": []string{
 		"Dial",
 		"NewClient",
 		"NewClientCodec",
 		"NewServerCodec",
 		"ServeConn",
 	},
-	"net/smtp": {
+	"net/smtp": []string{
 		"Auth",
 		"CRAMMD5Auth",
 		"Client",
@@ -4369,7 +4369,7 @@ var stdlib = map[string][]string{
 		"SendMail",
 		"ServerInfo",
 	},
-	"net/textproto": {
+	"net/textproto": []string{
 		"CanonicalMIMEHeaderKey",
 		"Conn",
 		"Dial",
@@ -4385,7 +4385,7 @@ var stdlib = map[string][]string{
 		"TrimString",
 		"Writer",
 	},
-	"net/url": {
+	"net/url": []string{
 		"Error",
 		"EscapeError",
 		"InvalidHostError",
@@ -4402,7 +4402,7 @@ var stdlib = map[string][]string{
 		"Userinfo",
 		"Values",
 	},
-	"os": {
+	"os": []string{
 		"Args",
 		"Chdir",
 		"Chmod",
@@ -4518,7 +4518,7 @@ var stdlib = map[string][]string{
 		"UserHomeDir",
 		"WriteFile",
 	},
-	"os/exec": {
+	"os/exec": []string{
 		"Cmd",
 		"Command",
 		"CommandContext",
@@ -4527,7 +4527,7 @@ var stdlib = map[string][]string{
 		"ExitError",
 		"LookPath",
 	},
-	"os/signal": {
+	"os/signal": []string{
 		"Ignore",
 		"Ignored",
 		"Notify",
@@ -4535,7 +4535,7 @@ var stdlib = map[string][]string{
 		"Reset",
 		"Stop",
 	},
-	"os/user": {
+	"os/user": []string{
 		"Current",
 		"Group",
 		"Lookup",
@@ -4548,7 +4548,7 @@ var stdlib = map[string][]string{
 		"UnknownUserIdError",
 		"User",
 	},
-	"path": {
+	"path": []string{
 		"Base",
 		"Clean",
 		"Dir",
@@ -4559,7 +4559,7 @@ var stdlib = map[string][]string{
 		"Match",
 		"Split",
 	},
-	"path/filepath": {
+	"path/filepath": []string{
 		"Abs",
 		"Base",
 		"Clean",
@@ -4585,12 +4585,12 @@ var stdlib = map[string][]string{
 		"WalkDir",
 		"WalkFunc",
 	},
-	"plugin": {
+	"plugin": []string{
 		"Open",
 		"Plugin",
 		"Symbol",
 	},
-	"reflect": {
+	"reflect": []string{
 		"Append",
 		"AppendSlice",
 		"Array",
@@ -4662,7 +4662,7 @@ var stdlib = map[string][]string{
 		"ValueOf",
 		"Zero",
 	},
-	"regexp": {
+	"regexp": []string{
 		"Compile",
 		"CompilePOSIX",
 		"Match",
@@ -4673,7 +4673,7 @@ var stdlib = map[string][]string{
 		"QuoteMeta",
 		"Regexp",
 	},
-	"regexp/syntax": {
+	"regexp/syntax": []string{
 		"ClassNL",
 		"Compile",
 		"DotNL",
@@ -4751,7 +4751,7 @@ var stdlib = map[string][]string{
 		"UnicodeGroups",
 		"WasDollar",
 	},
-	"runtime": {
+	"runtime": []string{
 		"BlockProfile",
 		"BlockProfileRecord",
 		"Breakpoint",
@@ -4799,7 +4799,7 @@ var stdlib = map[string][]string{
 		"UnlockOSThread",
 		"Version",
 	},
-	"runtime/debug": {
+	"runtime/debug": []string{
 		"BuildInfo",
 		"FreeOSMemory",
 		"GCStats",
@@ -4815,7 +4815,7 @@ var stdlib = map[string][]string{
 		"Stack",
 		"WriteHeapDump",
 	},
-	"runtime/metrics": {
+	"runtime/metrics": []string{
 		"All",
 		"Description",
 		"Float64Histogram",
@@ -4828,7 +4828,7 @@ var stdlib = map[string][]string{
 		"Value",
 		"ValueKind",
 	},
-	"runtime/pprof": {
+	"runtime/pprof": []string{
 		"Do",
 		"ForLabels",
 		"Label",
@@ -4844,7 +4844,7 @@ var stdlib = map[string][]string{
 		"WithLabels",
 		"WriteHeapProfile",
 	},
-	"runtime/trace": {
+	"runtime/trace": []string{
 		"IsEnabled",
 		"Log",
 		"Logf",
@@ -4856,7 +4856,7 @@ var stdlib = map[string][]string{
 		"Task",
 		"WithRegion",
 	},
-	"sort": {
+	"sort": []string{
 		"Float64Slice",
 		"Float64s",
 		"Float64sAreSorted",
@@ -4879,7 +4879,7 @@ var stdlib = map[string][]string{
 		"Strings",
 		"StringsAreSorted",
 	},
-	"strconv": {
+	"strconv": []string{
 		"AppendBool",
 		"AppendFloat",
 		"AppendInt",
@@ -4918,7 +4918,7 @@ var stdlib = map[string][]string{
 		"Unquote",
 		"UnquoteChar",
 	},
-	"strings": {
+	"strings": []string{
 		"Builder",
 		"Compare",
 		"Contains",
@@ -4970,7 +4970,7 @@ var stdlib = map[string][]string{
 		"TrimSpace",
 		"TrimSuffix",
 	},
-	"sync": {
+	"sync": []string{
 		"Cond",
 		"Locker",
 		"Map",
@@ -4981,7 +4981,7 @@ var stdlib = map[string][]string{
 		"RWMutex",
 		"WaitGroup",
 	},
-	"sync/atomic": {
+	"sync/atomic": []string{
 		"AddInt32",
 		"AddInt64",
 		"AddUint32",
@@ -5013,7 +5013,7 @@ var stdlib = map[string][]string{
 		"SwapUintptr",
 		"Value",
 	},
-	"syscall": {
+	"syscall": []string{
 		"AF_ALG",
 		"AF_APPLETALK",
 		"AF_ARP",
@@ -10162,7 +10162,7 @@ var stdlib = map[string][]string{
 		"XP1_UNI_RECV",
 		"XP1_UNI_SEND",
 	},
-	"syscall/js": {
+	"syscall/js": []string{
 		"CopyBytesToGo",
 		"CopyBytesToJS",
 		"Error",
@@ -10185,7 +10185,7 @@ var stdlib = map[string][]string{
 		"ValueOf",
 		"Wrapper",
 	},
-	"testing": {
+	"testing": []string{
 		"AllocsPerRun",
 		"B",
 		"Benchmark",
@@ -10211,12 +10211,12 @@ var stdlib = map[string][]string{
 		"TB",
 		"Verbose",
 	},
-	"testing/fstest": {
+	"testing/fstest": []string{
 		"MapFS",
 		"MapFile",
 		"TestFS",
 	},
-	"testing/iotest": {
+	"testing/iotest": []string{
 		"DataErrReader",
 		"ErrReader",
 		"ErrTimeout",
@@ -10228,7 +10228,7 @@ var stdlib = map[string][]string{
 		"TimeoutReader",
 		"TruncateWriter",
 	},
-	"testing/quick": {
+	"testing/quick": []string{
 		"Check",
 		"CheckEqual",
 		"CheckEqualError",
@@ -10238,7 +10238,7 @@ var stdlib = map[string][]string{
 		"SetupError",
 		"Value",
 	},
-	"text/scanner": {
+	"text/scanner": []string{
 		"Char",
 		"Comment",
 		"EOF",
@@ -10261,7 +10261,7 @@ var stdlib = map[string][]string{
 		"String",
 		"TokenString",
 	},
-	"text/tabwriter": {
+	"text/tabwriter": []string{
 		"AlignRight",
 		"Debug",
 		"DiscardEmptyColumns",
@@ -10272,7 +10272,7 @@ var stdlib = map[string][]string{
 		"TabIndent",
 		"Writer",
 	},
-	"text/template": {
+	"text/template": []string{
 		"ExecError",
 		"FuncMap",
 		"HTMLEscape",
@@ -10290,7 +10290,7 @@ var stdlib = map[string][]string{
 		"Template",
 		"URLQueryEscaper",
 	},
-	"text/template/parse": {
+	"text/template/parse": []string{
 		"ActionNode",
 		"BoolNode",
 		"BranchNode",
@@ -10341,7 +10341,7 @@ var stdlib = map[string][]string{
 		"VariableNode",
 		"WithNode",
 	},
-	"time": {
+	"time": []string{
 		"ANSIC",
 		"After",
 		"AfterFunc",
@@ -10410,7 +10410,7 @@ var stdlib = map[string][]string{
 		"Wednesday",
 		"Weekday",
 	},
-	"unicode": {
+	"unicode": []string{
 		"ASCII_Hex_Digit",
 		"Adlam",
 		"Ahom",
@@ -10696,14 +10696,14 @@ var stdlib = map[string][]string{
 		"Zp",
 		"Zs",
 	},
-	"unicode/utf16": {
+	"unicode/utf16": []string{
 		"Decode",
 		"DecodeRune",
 		"Encode",
 		"EncodeRune",
 		"IsSurrogate",
 	},
-	"unicode/utf8": {
+	"unicode/utf8": []string{
 		"DecodeLastRune",
 		"DecodeLastRuneInString",
 		"DecodeRune",
@@ -10723,7 +10723,7 @@ var stdlib = map[string][]string{
 		"ValidRune",
 		"ValidString",
 	},
-	"unsafe": {
+	"unsafe": []string{
 		"Alignof",
 		"ArbitraryType",
 		"Offsetof",
