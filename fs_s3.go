@@ -95,6 +95,8 @@ func (p *pipeline) Close() error {
 	return p.err
 }
 
+var s3acl = "bucket-owner-full-control"
+
 func (g *S3) Create(file string) (io.WriteCloser, error) {
 	if !g.ensure() {
 		return nil, g.err
@@ -116,7 +118,7 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 			Body:   bufio.NewReader(pr),
 			Bucket: &u.Host,
 			Key:    &u.Path,
-			ACL:    aws.String("bucket-owner-full-control"),
+			ACL:    &s3acl,
 		})
 		pipectl.wait <- err
 	}()
