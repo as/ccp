@@ -116,6 +116,7 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 			Body:   bufio.NewReader(pr),
 			Bucket: &u.Host,
 			Key:    &u.Path,
+			ACL:    aws.String("bucket-owner-full-control"),
 		})
 		pipectl.wait <- err
 	}()
