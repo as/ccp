@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/as/log"
 	"github.com/aws/aws-sdk-go/aws/session"
 	s3 "github.com/aws/aws-sdk-go/service/s3"
 	s3m "github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -117,7 +118,33 @@ func (p *pipeline) Err() error {
 	return p.err
 }
 
-var s3acl = "bucket-owner-full-control"
+var (
+	extraGrants = strings.Split(os.Getenv("GRANTFULLCONTROL"), ",")
+	s3acl       = "bucket-owner-full-control"
+)
+
+func (g *S3) ownerOf(bucket string) []string {
+	r, err := g.c.GetBucketAcl(&s3.GetBucketAclInput{
+		Bucket: &bucket,
+	})
+	if err != nil {
+		return nil
+	}
+	return []string{*r.Owner.ID}
+}
+
+func (g *S3) uploadGrants(bucket string) string {
+	grants, sep := "", ""
+	for _, id := range append(g.ownerOf(bucket), extraGrants...) {
+		if id == "" {
+			continue
+		}
+		grants += sep + "id=" + id
+		sep = ","
+	}
+	log.Info.F("grant full control to: %q", grants)
+	return grants
+}
 
 func (g *S3) Create(file string) (io.WriteCloser, error) {
 	if !g.ensure() {
@@ -133,14 +160,22 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 		wait:        make(chan error, 1),
 		WriteCloser: pw,
 	}
+
+	grants := g.uploadGrants(u.Host)
+	acl := s3acl
+	if grants != "" {
+		acl = ""
+	}
+
 	go func() {
 		atomic.AddInt64(&g.ctr, +1)
 		defer atomic.AddInt64(&g.ctr, -1)
 		_, err = g.u.Upload(&s3m.UploadInput{
-			Body:   bufio.NewReader(pr),
-			Bucket: &u.Host,
-			Key:    &u.Path,
-			ACL:    &s3acl,
+			Body:             bufio.NewReader(pr),
+			Bucket:           &u.Host,
+			Key:              &u.Path,
+			ACL:              &acl,
+			GrantFullControl: &grants,
 		})
 		pipectl.wait <- err
 		if err != nil {
