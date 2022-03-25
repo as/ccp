@@ -49,9 +49,13 @@ func (g *S3) List(dir string) (file []Info, err error) {
 	}
 	u := uri(dir)
 	dir = strings.TrimPrefix(u.Path, "/")
-	o, err := g.c.ListObjects(&s3.ListObjectsInput{
-		Bucket: &u.Host,
-		Prefix: &dir,
+
+	var cursor *string // hare-brained sdk
+Unroll:
+	o, err := g.c.ListObjectsV2(&s3.ListObjectsV2Input{
+		Bucket:            &u.Host,
+		Prefix:            &dir,
+		ContinuationToken: cursor,
 	})
 	for _, v := range o.Contents {
 		u := u
@@ -60,6 +64,11 @@ func (g *S3) List(dir string) (file []Info, err error) {
 			Info{URL: &u, Size: int(*v.Size)},
 		)
 	}
+	if v := o.NextContinuationToken; v != nil {
+		cursor = v
+		goto Unroll
+	}
+
 	return file, err
 }
 

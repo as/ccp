@@ -19,6 +19,7 @@ import (
 var (
 	bs    = flag.Int("bs", 16*1024*1024, "block size for copy operation")
 	dry   = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
+	ls    = flag.Bool("ls", false, "list the source files in dirs with their file sizes")
 	quiet = flag.Bool("q", false, "dont print any progress output")
 )
 
@@ -73,11 +74,33 @@ func docp(src, dst string, ec chan<- error) {
 	}
 }
 
+func list(src ...string) {
+	for _, src := range src {
+		sfs := driver[uri(src).Scheme]
+		if sfs == nil {
+			println("src: scheme not supported", src)
+			os.Exit(1)
+		}
+		dir, err := sfs.List(src)
+		if err != nil {
+			log.Error.F("list error: %q: %v", src, err)
+			continue
+		}
+		for _, f := range dir {
+			fmt.Println(f.Size, f.Path)
+		}
+	}
+}
+
 func main() {
 	defer closeAll()
 
 	flag.Parse()
 	a := flag.Args()
+	if *ls {
+		list(a...)
+		os.Exit(0)
+	}
 	if len(a) != 2 {
 		println("usage: ccp src... dst")
 		os.Exit(1)
