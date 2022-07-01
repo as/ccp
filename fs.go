@@ -19,8 +19,10 @@ import (
 var (
 	bs    = flag.Int("bs", 16*1024*1024, "block size for copy operation")
 	dry   = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
-	ls    = flag.Bool("ls", false, "list the source files in dirs with their file sizes")
 	quiet = flag.Bool("q", false, "dont print any progress output")
+
+	ls   = flag.Bool("ls", false, "list the source files in dirs with their file sizes")
+	full = flag.Bool("f", false, "always print full urls (for use with -ls)")
 )
 
 var (
@@ -65,11 +67,11 @@ func docp(src, dst string, ec chan<- error) {
 			ec <- fmt.Errorf("create dst: %s: %w", dst, err)
 			return
 		}
-		defer dfd.Close()
-		defer sfd.Close()
 
 		buf := make([]byte, *bs)
 		_, err = io.CopyBuffer(tx{dfd}, rx{sfd}, buf)
+		dfd.Close()
+		sfd.Close()
 		ec <- err
 	}
 }
@@ -86,8 +88,14 @@ func list(src ...string) {
 			log.Error.F("list error: %q: %v", src, err)
 			continue
 		}
-		for _, f := range dir {
-			fmt.Println(f.Size, f.Path)
+		if !*full {
+			for _, f := range dir {
+				fmt.Println(f.Size, f.Path)
+			}
+		} else {
+			for _, f := range dir {
+				fmt.Println(f.Size, f.URL)
+			}
 		}
 	}
 }

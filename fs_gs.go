@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"strings"
-	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/as/log"
@@ -50,7 +49,7 @@ func (g *GS) List(dir string) (file []Info, err error) {
 func (g *GS) Open(file string) (io.ReadCloser, error) {
 	u := uri(file)
 	u.Path = strings.TrimPrefix(u.Path, "/")
-	log.Info.Add("host", u.Host, "path", u.Path).Printf("open")
+	log.Debug.Add("host", u.Host, "path", u.Path).Printf("open")
 	if !g.ensure() {
 		return nil, g.err
 	}
@@ -63,13 +62,11 @@ func (g *GS) Create(file string) (io.WriteCloser, error) {
 	}
 	u := uri(file)
 	u.Path = strings.TrimPrefix(u.Path, "/")
-	log.Info.Add("host", u.Host, "path", u.Path).Printf("create")
+	log.Debug.Add("host", u.Host, "path", u.Path).Printf("create")
 	return g.c.Bucket(u.Host).Object(u.Path).NewWriter(g.ctx), nil
 }
 
 func (f GS) Close() error {
-
-	time.Sleep(time.Second * 5)
-	log.Info.Printf("closed")
+	log.Debug.F("closed")
 	return nil
 }
