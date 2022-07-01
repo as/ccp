@@ -26,9 +26,7 @@ var iostat = struct {
 type rx struct{ io.Reader }
 
 func (r rx) Read(p []byte) (n int, err error) {
-	//print("read")
 	n, err = r.Reader.Read(p)
-	//	println(" [v]")
 	atomic.AddInt64(&iostat.rx, int64(n))
 	return n, err
 }
@@ -36,9 +34,7 @@ func (r rx) Read(p []byte) (n int, err error) {
 type tx struct{ io.Writer }
 
 func (w tx) Write(p []byte) (n int, err error) {
-	//	print("write")
 	n, err = w.Writer.Write(p)
-	//	println(" [v]")
 	atomic.AddInt64(&iostat.tx, int64(n))
 	return n, err
 }

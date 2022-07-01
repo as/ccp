@@ -189,7 +189,7 @@ func progress(done, total int) {
 		"file.errors", nerr,
 		"mbps", bps/(1024*1024),
 		"progress", tx*100/int64(txquota),
-		"runtime", dur.Seconds(),
+		"uptime", dur.Seconds(),
 	).Printf("")
 }
 
