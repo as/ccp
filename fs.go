@@ -25,8 +25,7 @@ var (
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 
-	full      = flag.Bool("f", false, "ls prints full urls")
-	size      = flag.Bool("s", false, "ls prints file size as prefix")
+	rel       = flag.Bool("rel", false, "ls omits scheme and bucket")
 	stdinlist = flag.Bool("l", false, "treat stdin as a list of sources instead of data")
 )
 
@@ -93,7 +92,7 @@ func list(src ...string) {
 			log.Error.F("list error: %q: %v", src, err)
 			continue
 		}
-		if !*full {
+		if *rel {
 			for _, f := range dir {
 				fmt.Printf("%d\t%s\n", f.Size, f.Path)
 			}
