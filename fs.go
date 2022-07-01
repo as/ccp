@@ -54,22 +54,22 @@ func docp(src, dst string, ec chan<- error) {
 	dfs := driver[uri(dst).Scheme]
 
 	{
-		src, err := sfs.Open(src)
+		sfd, err := sfs.Open(src)
 		if err != nil {
-			ec <- fmt.Errorf("open src: %w", err)
+			ec <- fmt.Errorf("open src: %s: %w", src, err)
 			return
 		}
 
-		dst, err := dfs.Create(dst)
+		dfd, err := dfs.Create(dst)
 		if err != nil {
-			ec <- fmt.Errorf("create dst: %w", err)
+			ec <- fmt.Errorf("create dst: %s: %w", dst, err)
 			return
 		}
-		defer dst.Close()
-		defer src.Close()
+		defer dfd.Close()
+		defer sfd.Close()
 
 		buf := make([]byte, *bs)
-		_, err = io.CopyBuffer(tx{dst}, rx{src}, buf)
+		_, err = io.CopyBuffer(tx{dfd}, rx{sfd}, buf)
 		ec <- err
 	}
 }

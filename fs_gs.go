@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"io"
+	"strings"
+	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/as/log"
+	"google.golang.org/api/iterator"
 )
 
 type GS struct {
@@ -24,15 +28,32 @@ func (g *GS) ensure() bool {
 }
 
 func (g *GS) List(dir string) (file []Info, err error) {
-	u := uri(dir)
-	return []Info{{URL: &u}}, errNotImplemented
-}
-
-func (g *GS) Open(file string) (io.ReadCloser, error) {
 	if !g.ensure() {
 		return nil, g.err
 	}
+	u := uri(dir)
+	dir = strings.TrimPrefix(u.Path, "/")
+
+	it := g.c.Bucket(u.Host).Objects(g.ctx, &storage.Query{Prefix: dir})
+	for {
+		attr, err := it.Next()
+		if err == iterator.Done || err != nil {
+			break
+		}
+		u := u
+		u.Path = attr.Name
+		file = append(file, Info{URL: &u, Size: int(attr.Size)})
+	}
+	return file, err
+}
+
+func (g *GS) Open(file string) (io.ReadCloser, error) {
 	u := uri(file)
+	u.Path = strings.TrimPrefix(u.Path, "/")
+	log.Info.Add("host", u.Host, "path", u.Path).Printf("open")
+	if !g.ensure() {
+		return nil, g.err
+	}
 	return g.c.Bucket(u.Host).Object(u.Path).NewReader(g.ctx)
 }
 
@@ -41,7 +62,14 @@ func (g *GS) Create(file string) (io.WriteCloser, error) {
 		return nil, g.err
 	}
 	u := uri(file)
+	u.Path = strings.TrimPrefix(u.Path, "/")
+	log.Info.Add("host", u.Host, "path", u.Path).Printf("create")
 	return g.c.Bucket(u.Host).Object(u.Path).NewWriter(g.ctx), nil
 }
 
-func (f GS) Close() error { return nil }
+func (f GS) Close() error {
+
+	time.Sleep(time.Second * 5)
+	log.Info.Printf("closed")
+	return nil
+}

@@ -6,4 +6,5 @@ require (
 	cloud.google.com/go/storage v1.16.0
 	github.com/as/log v0.0.4
 	github.com/aws/aws-sdk-go v1.40.32
+	google.golang.org/api v0.49.0 // indirect
 )
