@@ -146,6 +146,9 @@ func main() {
 			list = append(list, info)
 		}
 		a[0] = commonPrefix(list...)
+		if len(list) == 1 {
+			a[0] = path.Dir(a[0])
+		}
 	} else {
 		list, err = sfs.List(a[0])
 		if err != nil {

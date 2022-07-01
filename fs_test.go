@@ -15,6 +15,10 @@ func TestCommonPrefix(t *testing.T) {
 		list []string
 	}{
 		{"/a/b", []string{
+			"/a/b",
+		},
+		},
+		{"/a/b", []string{
 			"/a/b/foo/1",
 			"/a/b/foo/2",
 			"/a/b/foo/3/4/5",
