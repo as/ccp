@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -21,8 +23,11 @@ var (
 	dry   = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
 	quiet = flag.Bool("q", false, "dont print any progress output")
 
-	ls   = flag.Bool("ls", false, "list the source files in dirs with their file sizes")
-	full = flag.Bool("f", false, "always print full urls (for use with -ls)")
+	ls = flag.Bool("ls", false, "list the source files or dirs")
+
+	full      = flag.Bool("f", false, "ls prints full urls")
+	size      = flag.Bool("s", false, "ls prints file size as prefix")
+	stdinlist = flag.Bool("l", false, "treat stdin as a list of sources instead of data")
 )
 
 var (
@@ -90,11 +95,11 @@ func list(src ...string) {
 		}
 		if !*full {
 			for _, f := range dir {
-				fmt.Println(f.Size, f.Path)
+				fmt.Printf("%d\t%s\n", f.Size, f.Path)
 			}
 		} else {
 			for _, f := range dir {
-				fmt.Println(f.Size, f.URL)
+				fmt.Printf("%d\t%s\n", f.Size, f.URL)
 			}
 		}
 	}
@@ -122,10 +127,33 @@ func main() {
 		println("dst: not supported", a[1])
 		os.Exit(1)
 	}
-	list, err := sfs.List(a[0])
-	if err != nil {
-		log.Error.Add("action", "list", "err", err).Printf("")
+
+	var (
+		list []Info
+		err  error
+	)
+
+	if a[0] == "-" && *stdinlist {
+		sc := bufio.NewScanner(os.Stdin)
+		for sc.Scan() {
+			info := Info{}
+			v := strings.Split(sc.Text(), "\t")
+			if len(v) > 1 {
+				info.Size, _ = strconv.Atoi(v[0])
+				v[0] = v[1]
+			}
+			u := uri(v[0])
+			info.URL = &u
+			list = append(list, info)
+		}
+		a[0] = commonPrefix(list...)
+	} else {
+		list, err = sfs.List(a[0])
+		if err != nil {
+			log.Error.Add("action", "list", "err", err).Printf("")
+		}
 	}
+
 	ec := make(chan error)
 	n := 0
 	for _, src := range list {
@@ -231,4 +259,33 @@ func uri(s string) url.URL {
 		return url.URL{}
 	}
 	return *u
+}
+
+func paths(file ...Info) (p []string) {
+	for _, v := range file {
+		p = append(p, v.Path)
+	}
+	return p
+}
+
+func commonPrefix(file ...Info) string {
+	if len(file) == 0 {
+		return ""
+	}
+	list := paths(file...)
+	min := strings.Split(list[0], "/")
+	for _, p := range list {
+		if len(min) == 0 {
+			break
+		}
+		a := strings.Split(p, "/")
+		if len(a) < len(min) {
+			a, min = min, a
+		}
+		n := 0
+		for ; n < len(min) && min[n] == a[n]; n++ {
+		}
+		min = min[:n]
+	}
+	return path.Join(append([]string{"/"}, min...)...)
 }
