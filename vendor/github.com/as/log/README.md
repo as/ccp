@@ -17,7 +17,7 @@ var (
 		return time.Now().UnixNano() / int64(time.Millisecond)
 	}
 
-	// Default is the level used when calling Printf and Fatalf
+	// Default is the level used when calling Printf
 	Default = Info
 )
 ```

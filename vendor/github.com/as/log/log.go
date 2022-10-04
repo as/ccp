@@ -23,7 +23,7 @@ var (
 
 	// Time is your time function. Default is a millisecond timestamp.
 	Time = func() interface{} {
-		return time.Now().UnixNano() / int64(time.Millisecond)
+		return time.Now().Unix()
 	}
 
 	// Tags are global static fields to publish for this process on
@@ -83,7 +83,7 @@ func (l line) Printf(f string, v ...interface{}) {
 	}
 	fmt.Fprintln(stderr, l.Msg(f, v...).String())
 	if l.Level == "fatal" {
-		panic("fatal log level")
+		panic(trapme(fmt.Sprintf("fatal: "+f, v...)))
 	}
 }
 
@@ -104,7 +104,7 @@ func (l line) Msg(f string, v ...interface{}) line {
 func (l line) String() string {
 	hdr := append(fields{
 		"svc", Service,
-		"time", Time(),
+		"ts", Time(), // time often gets overwritten
 		"level", l.Level,
 	}, Tags...)
 	hdr = append(hdr, l.fields...)
@@ -162,4 +162,20 @@ func quote(v interface{}) string {
 	}
 	data, _ := json.Marshal(v)
 	return string(data)
+}
+
+type trapme string
+
+// Trap may be used in a defer to suppress stack traces caused
+// by a call to Fatal.F or Fatal.Printf. Panics from other sources are
+// not affected. Trap calls os.Exit(1) if the panic occured from these
+// functions.
+func Trap() {
+	v := recover()
+	if _, ok := v.(trapme); ok {
+		os.Exit(1)
+	}
+	if v != nil {
+		panic(v) // re-panic if something else caused it
+	}
 }

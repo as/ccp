@@ -22,6 +22,7 @@ var (
 	bs    = flag.Int("bs", 16*1024*1024, "block size for copy operation")
 	dry   = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
 	quiet = flag.Bool("q", false, "dont print any progress output")
+	flaky = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 
@@ -55,20 +56,20 @@ func closeAll() {
 	}
 }
 
-func docp(src, dst string, ec chan<- error) {
+func docp(src, dst string, ec chan<- work) {
 	sfs := driver[uri(src).Scheme]
 	dfs := driver[uri(dst).Scheme]
 
 	{
 		sfd, err := sfs.Open(src)
 		if err != nil {
-			ec <- fmt.Errorf("open src: %s: %w", src, err)
+			ec <- work{src: src, dst: dst, err: fmt.Errorf("open src: %s: %w", src, err)}
 			return
 		}
 
 		dfd, err := dfs.Create(dst)
 		if err != nil {
-			ec <- fmt.Errorf("create dst: %s: %w", dst, err)
+			ec <- work{src: src, dst: dst, err: fmt.Errorf("create dst: %s: %w", dst, err)}
 			return
 		}
 
@@ -76,11 +77,12 @@ func docp(src, dst string, ec chan<- error) {
 		_, err = io.CopyBuffer(tx{dfd}, rx{sfd}, buf)
 		dfd.Close()
 		sfd.Close()
-		ec <- err
+		ec <- work{src: src, dst: dst, err: err}
 	}
 }
 
 func list(src ...string) {
+	var fatal error
 	for _, src := range src {
 		sfs := driver[uri(src).Scheme]
 		if sfs == nil {
@@ -90,6 +92,7 @@ func list(src ...string) {
 		dir, err := sfs.List(src)
 		if err != nil {
 			log.Error.F("list error: %q: %v", src, err)
+			fatal = err
 			continue
 		}
 		if *rel {
@@ -102,9 +105,13 @@ func list(src ...string) {
 			}
 		}
 	}
+	if fatal != nil {
+		log.Fatal.Add("err", fatal).Printf("")
+	}
 }
 
 func main() {
+	defer log.Trap()
 	defer closeAll()
 
 	flag.Parse()
@@ -151,12 +158,17 @@ func main() {
 		}
 	} else {
 		list, err = sfs.List(a[0])
+		line := log.Error.Add("action", "list", "src", a[0])
 		if err != nil {
-			log.Error.Add("action", "list", "err", err).Printf("")
+			if *flaky {
+				line.Add("err", err).Printf("")
+			} else {
+				line.Fatal().Add("err", err).Printf("")
+			}
 		}
 	}
 
-	ec := make(chan error)
+	ec := make(chan work)
 	n := 0
 	for _, src := range list {
 		dst := src2dst(a[0], src.String(), a[1])
@@ -176,11 +188,16 @@ func main() {
 
 	for i := 0; i < n; {
 		select {
-		case err := <-ec:
+		case w := <-ec:
 			i++
-			if err != nil {
+			line := log.Error.Add("action", "copy", "src", w.src, "dst", w.dst, "err", w.err)
+			if w.err != nil {
 				nerr++
-				log.Error.Add("err", err).Printf("copy error")
+				if *flaky {
+					line.Printf("copy error")
+				} else {
+					line.Fatal().Printf("copy error")
+				}
 			}
 		case <-tick:
 			progress(i, n)
@@ -207,9 +224,11 @@ func progress(done, total int) {
 	if s := dur / time.Second; s > 0 {
 		bps = tx / int64(s)
 	}
-	if txquota == 0 {
-		txquota = -1
+	prog := int64(0)
+	if txquota != 0 {
+		prog = tx * 100 / int64(txquota)
 	}
+
 	log.Info.Add(
 		"rx", rx,
 		"tx", tx,
@@ -218,9 +237,14 @@ func progress(done, total int) {
 		"file.total", total,
 		"file.errors", nerr,
 		"mbps", bps/(1024*1024),
-		"progress", tx*100/int64(txquota),
+		"progress", prog,
 		"uptime", dur.Seconds(),
 	).Printf("")
+}
+
+type work struct {
+	err      error
+	src, dst string
 }
 
 func src2dst(prefix, src, dst string) url.URL {

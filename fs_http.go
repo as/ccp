@@ -20,6 +20,7 @@ func (g *HTTP) ensure() bool {
 
 func (g *HTTP) List(dir string) (file []Info, err error) {
 	u := uri(dir)
+	//curl -v -H 'Range: bytes=0-0'  http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
 	return []Info{{URL: &u}}, nil
 }
 
