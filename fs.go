@@ -75,8 +75,10 @@ func docp(src, dst string, ec chan<- work) {
 
 		buf := make([]byte, *bs)
 		_, err = io.CopyBuffer(tx{dfd}, rx{sfd}, buf)
-		dfd.Close()
-		sfd.Close()
+		if err == nil {
+			sfd.Close()
+			err = dfd.Close()
+		}
 		ec <- work{src: src, dst: dst, err: err}
 	}
 }
