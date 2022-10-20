@@ -21,6 +21,7 @@ import (
 var (
 	bs    = flag.Int("bs", 16*1024*1024, "block size for copy operation")
 	dry   = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
+	test  = flag.Bool("test", false, "open and create files, but do not read or copy data")
 	quiet = flag.Bool("q", false, "dont print any progress output")
 	flaky = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
 
@@ -72,12 +73,15 @@ func docp(src, dst string, ec chan<- work) {
 			ec <- work{src: src, dst: dst, err: fmt.Errorf("create dst: %s: %w", dst, err)}
 			return
 		}
-
-		buf := make([]byte, *bs)
-		_, err = io.CopyBuffer(tx{dfd}, rx{sfd}, buf)
+		if !*test {
+			buf := make([]byte, *bs)
+			_, err = io.CopyBuffer(tx{dfd}, rx{sfd}, buf)
+		}
 		if err == nil {
 			sfd.Close()
-			err = dfd.Close()
+			if err = dfd.Close(); err != nil {
+				err = fmt.Errorf("copy dst: %s: %w", dst, err)
+			}
 		}
 		ec <- work{src: src, dst: dst, err: err}
 	}

@@ -170,7 +170,10 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 		WriteCloser: pw,
 	}
 
-	grants := g.uploadGrants(u.Host)
+	grants := ""
+	if !*test {
+		grants = g.uploadGrants(u.Host)
+	}
 	acl := s3acl
 	if grants != "" {
 		acl = ""
