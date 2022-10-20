@@ -6,12 +6,14 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type OS struct {
 }
 
 func (f OS) List(dir string) (file []Info, err error) {
+	dir = localize(dir)
 	u := uri(dir)
 	if dir == "-" {
 		return []Info{{URL: &u}}, nil
@@ -30,6 +32,7 @@ func (f OS) List(dir string) (file []Info, err error) {
 }
 
 func (f OS) Open(file string) (io.ReadCloser, error) {
+	file = localize(file)
 	if file == "-" {
 		return os.Stdin, nil
 	}
@@ -37,6 +40,7 @@ func (f OS) Open(file string) (io.ReadCloser, error) {
 }
 
 func (f OS) Create(file string) (io.WriteCloser, error) {
+	file = localize(file)
 	if file == "-" {
 		// Invariant: users with files named "-" will not
 		// ruin it for the rest of us.
@@ -51,3 +55,10 @@ func (f OS) Create(file string) (io.WriteCloser, error) {
 }
 
 func (f OS) Close() error { return nil }
+
+func localize(file string) string {
+	if strings.HasPrefix(file, "file://") { // rooted prefix
+		return strings.TrimPrefix(file, "file://")
+	}
+	return file
+}
