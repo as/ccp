@@ -48,7 +48,7 @@ func (f OS) Create(file string) (io.WriteCloser, error) {
 	}
 	w, err := os.Create(file)
 	if errors.Is(err, os.ErrNotExist) {
-		os.MkdirAll(filepath.Dir(file), 0)
+		os.MkdirAll(filepath.Dir(file), 0777)
 		w, err = os.Create(file)
 	}
 	return w, err
