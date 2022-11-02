@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	bs    = flag.Int("bs", 16*1024*1024, "block size for copy operation")
+	bs    = flag.Int("bs", 256, "block size for copy operation")
 	dry   = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
 	test  = flag.Bool("test", false, "open and create files, but do not read or copy data")
 	quiet = flag.Bool("q", false, "dont print any progress output")
