@@ -182,12 +182,16 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 	go func() {
 		atomic.AddInt64(&g.ctr, +1)
 		defer atomic.AddInt64(&g.ctr, -1)
+		br := bufio.NewReader(pr)
+		data, _ := br.Peek(32)
+		content := sniffContent(data)
 		_, err = g.u.Upload(&s3m.UploadInput{
-			Body:             bufio.NewReader(pr),
+			Body:             br,
 			Bucket:           &u.Host,
 			Key:              &u.Path,
 			ACL:              &acl,
 			GrantFullControl: &grants,
+			ContentType:      &content,
 		})
 		pipectl.wait <- err
 		if err != nil {
