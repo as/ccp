@@ -11,10 +11,17 @@ import (
 
 func init() {
 	log.Service = os.Getenv("SVC")
-	for _, t := range strings.Split(os.Getenv("TAGS"), ",") {
-		t = strings.TrimSpace(t)
-		if len(t) > 0 {
-			log.Tags = log.Tags.Add(t)
+	tags := strings.Split(os.Getenv("TAGS"), ",")
+	for i := 0; i+1 < len(tags); i += 2 {
+		key, val := tags[i], tags[i+1]
+		if key == "" || val == "" {
+			continue
+		}
+		log.Tags = log.Tags.Add(key, val)
+	}
+	for _, key := range strings.Split(os.Getenv("LOGENV"), ",") {
+		if val := os.Getenv(key); val != "" && key != "" {
+			log.Tags = log.Tags.Add(key, val)
 		}
 	}
 }
