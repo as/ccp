@@ -30,6 +30,11 @@ type S3 struct {
 	err error
 }
 
+type box struct {
+	c *s3.S3
+	u *s3m.Uploader
+}
+
 func (g *S3) ensure() bool {
 	if g.ctx == nil {
 		g.ctx = context.Background()
@@ -229,7 +234,7 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 
 func (g *S3) Close() error {
 	for atomic.LoadInt64(&g.ctr) > 0 {
-		println("s3", atomic.LoadInt64(&g.ctr), "uploaders uploading")
+		log.Printf("s3: %d uploaders uploading", atomic.LoadInt64(&g.ctr))
 		time.Sleep(time.Second)
 	}
 	return nil

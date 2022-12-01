@@ -93,8 +93,7 @@ func list(src ...string) {
 	for _, src := range src {
 		sfs := driver[uri(src).Scheme]
 		if sfs == nil {
-			println("src: scheme not supported", src)
-			os.Exit(1)
+			log.Fatal.F("src: scheme not supported: %d", src)
 		}
 		dir, err := sfs.List(src)
 		if err != nil {
@@ -129,17 +128,14 @@ func main() {
 		os.Exit(0)
 	}
 	if len(a) != 2 {
-		println("usage: ccp src... dst")
-		os.Exit(1)
+		log.Fatal.F("usage: ccp src... dst")
 	}
 	sfs, dfs := driver[uri(a[0]).Scheme], driver[uri(a[1]).Scheme]
 	if sfs == nil {
-		println("src: not supported", a[0])
-		os.Exit(1)
+		log.Fatal.F("src: scheme not supported: %s", a[0])
 	}
 	if dfs == nil {
-		println("dst: not supported", a[1])
-		os.Exit(1)
+		log.Fatal.F("dst: scheme not supported: %s", a[1])
 	}
 
 	var (
