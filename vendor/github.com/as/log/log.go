@@ -135,6 +135,26 @@ func (l line) Fatal() line { l.Level = Fatal.Level; return l }
 
 type fields []interface{}
 
+// Export returns the unquoted set of key value pairs for the fields set.
+// If any element of the key-value pair resolves to the empty string, it
+// omits that pair.
+//
+// Invariant: len(kv) % 2 == true, for all calls to Export
+func (f fields) Export() (kv []string) {
+	for i := 0; i+1 < len(f); i += 2 {
+		key, val := f[i], f[i+1]
+		if key == "" || val == "" || val == nil {
+			continue
+		}
+		k, v := fmt.Sprint(key), fmt.Sprint(val)
+		if k == "" || v == "" {
+			continue
+		}
+		kv = append(kv, k, v)
+	}
+	return
+}
+
 func (f fields) String() (s string) {
 	sep := ""
 	for i := 0; i+1 < len(f); i += 2 {

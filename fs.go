@@ -93,7 +93,7 @@ func list(src ...string) {
 	for _, src := range src {
 		sfs := driver[uri(src).Scheme]
 		if sfs == nil {
-			log.Fatal.F("src: scheme not supported: %d", src)
+			log.Fatal.F("src: scheme not supported: %s", src)
 		}
 		dir, err := sfs.List(src)
 		if err != nil {
