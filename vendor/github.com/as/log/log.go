@@ -18,8 +18,8 @@ import (
 )
 
 var (
-	// Service name
-	Service = ""
+	// Service name (can be set in main or elsewhere)
+	Service = os.Getenv("SVC")
 
 	// Time is your time function. Default is a millisecond timestamp.
 	Time = func() interface{} {
@@ -176,6 +176,6 @@ func Trap() {
 		os.Exit(1)
 	}
 	if v != nil {
-		panic(v) // re-panic if something else caused it
+		panic(v) // dont trap other panics
 	}
 }

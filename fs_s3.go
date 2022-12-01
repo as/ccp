@@ -248,6 +248,14 @@ func init() {
 			log.Tags = log.Tags.Add(key, val)
 		}
 	}
+	tags := strings.Split(os.Getenv("LOGTAGS"), ",")
+	for i := 0; i+1 < len(tags); i += 2 {
+		key, val := tags[i], tags[i+1]
+		if key == "" || val == "" {
+			continue
+		}
+		log.Tags = log.Tags.Add(key, val)
+	}
 	go func() {
 		os.Setenv("AWS_REGION", awsRegion())
 		close(regionDetected)
