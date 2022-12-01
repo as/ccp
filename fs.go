@@ -24,6 +24,7 @@ var (
 	test  = flag.Bool("test", false, "open and create files, but do not read or copy data")
 	quiet = flag.Bool("q", false, "dont print any progress output")
 	flaky = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
+	debug = flag.Bool("debug", false, "print debug logs")
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 
@@ -121,6 +122,7 @@ func main() {
 	defer closeAll()
 
 	flag.Parse()
+	log.DebugOn = *debug
 	a := flag.Args()
 	if *ls {
 		list(a...)

@@ -14,13 +14,16 @@ import (
 	"time"
 
 	"github.com/as/log"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	s3 "github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	s3m "github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 type S3 struct {
 	ctx context.Context
+	s   *session.Session
 	c   *s3.S3
 	u   *s3m.Uploader
 	ctr int64 // how many uploaders are uploading
@@ -34,6 +37,7 @@ func (g *S3) ensure() bool {
 	<-regionDetected
 	if g.c == nil {
 		s, err := session.NewSession()
+		g.s = s
 		g.err = err
 		if err == nil {
 			g.c = s3.New(s)
@@ -43,16 +47,36 @@ func (g *S3) ensure() bool {
 	return g.err == nil
 }
 
+func (g *S3) regionize(file string) (*s3.S3, *s3m.Uploader) {
+	native := os.Getenv("AWS_REGION")
+	r, _ := s3manager.GetBucketRegion(g.ctx, g.s, uri(file).Host, "")
+	if r == "" {
+		r = native
+	}
+	if r == native {
+		return g.c, g.u
+	}
+	sess, _ := session.NewSession(&aws.Config{
+		Region: &r,
+	})
+	if sess == nil {
+		return g.c, g.u
+	}
+	log.Printf("using new region configuration: %q", r)
+	return s3.New(sess), s3m.NewUploader(sess)
+}
+
 func (g *S3) List(dir string) (file []Info, err error) {
 	if !g.ensure() {
 		return nil, g.err
 	}
+	gc, _ := g.regionize(dir)
 	u := uri(dir)
 	dir = strings.TrimPrefix(u.Path, "/")
 
 	var cursor *string // hare-brained sdk
 Unroll:
-	o, err := g.c.ListObjectsV2(&s3.ListObjectsV2Input{
+	o, err := gc.ListObjectsV2(&s3.ListObjectsV2Input{
 		Bucket:            &u.Host,
 		Prefix:            &dir,
 		ContinuationToken: cursor,
@@ -76,8 +100,9 @@ func (g *S3) Open(file string) (io.ReadCloser, error) {
 	if !g.ensure() {
 		return nil, g.err
 	}
+	gc, _ := g.regionize(file)
 	u := uri(file)
-	o, err := g.c.GetObject(&s3.GetObjectInput{
+	o, err := gc.GetObject(&s3.GetObjectInput{
 		Bucket: &u.Host,
 		Key:    &u.Path,
 	})
@@ -159,6 +184,7 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 	if !g.ensure() {
 		return nil, g.err
 	}
+	_, gu := g.regionize(file)
 	u := uri(file)
 	pr, pw, err := os.Pipe()
 	if err != nil {
@@ -185,7 +211,7 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 		br := bufio.NewReader(pr)
 		data, _ := br.Peek(32)
 		content := sniffContent(data)
-		_, err = g.u.Upload(&s3m.UploadInput{
+		_, err = gu.Upload(&s3m.UploadInput{
 			Body:             br,
 			Bucket:           &u.Host,
 			Key:              &u.Path,
@@ -209,11 +235,14 @@ func (g *S3) Close() error {
 	return nil
 }
 
-// sess.Copy(&aws.Config{Region: aws.String("us-east-2")})
-
 var regionDetected = make(chan bool)
 
 func init() {
+	for _, key := range strings.Split(os.Getenv("LOGENV"), ",") {
+		if val := os.Getenv(key); val != "" {
+			log.Tags = log.Tags.Add(key, val)
+		}
+	}
 	go func() {
 		os.Setenv("AWS_REGION", awsRegion())
 		close(regionDetected)
@@ -230,13 +259,13 @@ func awsRegion() string {
 		Region string
 	}{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, "GET", idURL, nil)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != 200 {
-		return ""
+		return "us-east-1"
 	}
 	json.NewDecoder(resp.Body).Decode(&ID)
 	return ID.Region
