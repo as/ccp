@@ -9,11 +9,7 @@ cloud.google.com/go/internal/version
 # cloud.google.com/go/storage v1.16.0
 ## explicit
 cloud.google.com/go/storage
-<<<<<<< HEAD
 # github.com/as/log v0.0.9
-=======
-# github.com/as/log v0.0.8
->>>>>>> f696195f083345b7c887ea11702c7f6178932598
 ## explicit
 github.com/as/log
 # github.com/aws/aws-sdk-go v1.40.32

@@ -67,7 +67,7 @@ func (g *S3) regionize(file string) (*s3.S3, *s3m.Uploader) {
 	if sess == nil {
 		return g.c, g.u
 	}
-	log.Printf("using new region configuration: %q", r)
+	log.Debug.F("using new region configuration: %q", r)
 	return s3.New(sess), s3m.NewUploader(sess)
 }
 
@@ -189,7 +189,7 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 	if !g.ensure() {
 		return nil, g.err
 	}
-	_, gu := g.regionize(file)
+	gc, gu := g.regionize(file)
 	u := uri(file)
 	pr, pw, err := os.Pipe()
 	if err != nil {
@@ -217,13 +217,23 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 		data, _ := br.Peek(32)
 		content := sniffContent(data)
 		_, err = gu.Upload(&s3m.UploadInput{
-			Body:             br,
-			Bucket:           &u.Host,
-			Key:              &u.Path,
-			ACL:              &acl,
-			GrantFullControl: &grants,
-			ContentType:      &content,
+			Body:   br,
+			Bucket: &u.Host,
+			Key:    &u.Path,
+			//	ACL:              &acl,
+			//	GrantFullControl: &grants,
+			ContentType: &content,
 		})
+		if err == nil {
+			_, err := gc.PutBucketAcl(&s3.PutBucketAclInput{
+				Bucket:           &u.Host,
+				ACL:              &acl,
+				GrantFullControl: &grants,
+			})
+			if err != nil {
+				log.Warn.F("s3: failed to grant full control: %s", err)
+			}
+		}
 		pipectl.wait <- err
 		if err != nil {
 			pipectl.Close()
