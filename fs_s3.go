@@ -220,12 +220,13 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 			Body:   br,
 			Bucket: &u.Host,
 			Key:    &u.Path,
-			//	ACL:              &acl,
-			//	GrantFullControl: &grants,
+			//		ACL:              &acl,
+			//		GrantFullControl: &grants,
 			ContentType: &content,
 		})
 		if err == nil {
-			_, err := gc.PutBucketAcl(&s3.PutBucketAclInput{
+			_, err := gc.PutObjectAcl(&s3.PutObjectAclInput{
+				Key:              &u.Path,
 				Bucket:           &u.Host,
 				ACL:              &acl,
 				GrantFullControl: &grants,
