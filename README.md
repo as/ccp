@@ -90,3 +90,20 @@ ccp -ls /tmp/ccp | awk '{ if ($1 <= 10) print }'  | ccp -l -dry - /tmp/ccp.bak/
 # All of these tricks can be used with gs and s3 buckets as well
 # to copy files across different cloud providers.
 ```
+
+## Notes
+
+### GS to S3 compatibility mode
+
+- The `gs` protocol supports an `s3` compatibility mode wherein an s3 client can speak to a `gs` bucket using the `s3` protocol. This usage mode is not well-documented, and involves generating aws-compatible hmac keys (aka $AWS_ACCESS_KEY_ID, $AWS_SECRET_ACCESS_KEY). This usage mode is not supported and in my experience does not work reliably. To fix this, use `GOOGLE_APPLICATION_CREDENTIALS` or some other credentials auto-detected by the google SDK.
+
+### Cross-Account Copying
+
+- Currently, it is not possible to copy files across accounts using the same scheme. For example, two `s3` buckets managed by different accounts. This is not possible to resolve without introducing a config file that properly initializes credentials based on the source or destination path.
+
+### Cross-Scheme Directory Structures
+
+- Schemes like `s3` (and possibly `gs`) do not have a concept of directories. Hence, it is possible to create `s3://bucket/file.mp4` and `s3://bucket/file.mp4/file.txt`. The `ccp` program always operates on a directory structure, so `ccp -ls s3://bucket/file.mp4` on such a layout will produce a list of outputs including both files. The best solution is to use a sane directory-based layout to migitage potentially undefined behavior when copying these resources to a local filesystem.
+
+ 
+
