@@ -30,8 +30,6 @@ ccp -test s3://bucket/file s3://bucket/file2
 
 You can also use `ccp -ls` to check access controls, however some schemes will allow accounts to `list` a file and then deny read access to that file.
 
-### Test
-
 
 ## Feature Matrix
 
