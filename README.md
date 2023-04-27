@@ -2,12 +2,36 @@
 ccp copies files across different file services
 
 ## Usage
+
+### Copy
+
 ```
 ccp http://example.com /tmp/file
 ccp /tmp/file s3://bucket/file
 ccp s3://bucket/file gs://bucket/file
 ccp s3://bucket/file s3://bucket/file2
 ```
+
+### List
+
+```
+ccp -ls s3://bucket/
+ccp -ls s3://bucket/dir
+```
+
+### Test
+
+The `test` flag will cause `ccp` to verify that it can read and write to the locations without copying data. The first example will check read access only, whereas the second also creates an empty `file2`. This is useful when you need to verify bucket permissions in advance before copying large files, however, it will create empty files.
+
+```
+ccp -test s3://bucket/file -
+ccp -test s3://bucket/file s3://bucket/file2
+```
+
+You can also use `ccp -ls` to check access controls, however some schemes will allow accounts to `list` a file and then deny read access to that file.
+
+### Test
+
 
 ## Feature Matrix
 
