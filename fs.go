@@ -201,11 +201,14 @@ func main() {
 
 	tick := time.NewTicker(time.Second).C
 	stopmon := make(chan bool)
+	fatal := make(chan string, 1)
 	if *deadband != 0 {
-		go monitor(stopmon, *deadband)
+		go monitor(stopmon, fatal, *deadband)
 	}
 	for i := 0; i < n; {
 		select {
+		case msg := <-fatal:
+			log.Fatal.F("%s", msg)
 		case sig := <-killc:
 			log.Fatal.F("trapped signal: %s", sig)
 		case w := <-ec:
@@ -214,9 +217,9 @@ func main() {
 			if w.err != nil {
 				nerr++
 				if *flaky {
-					line.Printf("copy error")
+					line.Printf("copy error: %s -> %s: %v", w.src, w.dst, w.err)
 				} else {
-					line.Fatal().Printf("copy error")
+					line.Fatal().F("copy error: %s -> %s: %v", w.src, w.dst, w.err)
 				}
 			}
 		case <-tick:
@@ -235,7 +238,7 @@ var nerr = 0
 var txquota = 0
 var procstart = time.Now()
 
-func monitor(done chan bool, deadband time.Duration) {
+func monitor(done chan bool, fatal chan string, deadband time.Duration) {
 	lastn := int64(0)
 	lastio := time.Now()
 	exit := func() bool {
@@ -259,14 +262,12 @@ func monitor(done chan bool, deadband time.Duration) {
 		if time.Since(lastio) < deadband || exit() {
 			continue
 		}
-		log.Fatal.F("io error: pipeline stalled, no rx/tx for %s after %0.3f MiB of io", deadband, float64(n)/1024/1024)
+		fatal <- fmt.Sprintf("io error: pipeline stalled, no rx/tx for %s after %0.3f MiB of io", deadband, float64(n)/1024/1024)
+		return
 	}
 }
 
 func progress(done, total int) {
-	if *quiet {
-		return
-	}
 	rx := atomic.LoadInt64(&iostat.rx)
 	tx := atomic.LoadInt64(&iostat.tx)
 	dur := time.Since(procstart)
@@ -279,17 +280,19 @@ func progress(done, total int) {
 		prog = tx * 100 / int64(txquota)
 	}
 
-	log.Info.Add(
-		"rx", rx,
-		"tx", tx,
-		"total", txquota,
-		"file.done", done,
-		"file.total", total,
-		"file.errors", nerr,
-		"mbps", bps/(1024*1024),
-		"progress", prog,
-		"uptime", dur.Seconds(),
-	).Printf("")
+	if !*quiet {
+		log.Info.Add(
+			"rx", rx,
+			"tx", tx,
+			"total", txquota,
+			"file.done", done,
+			"file.total", total,
+			"file.errors", nerr,
+			"mbps", bps/(1024*1024),
+			"progress", prog,
+			"uptime", dur.Seconds(),
+		).Printf("")
+	}
 }
 
 type work struct {
