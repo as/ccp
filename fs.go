@@ -9,22 +9,25 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"os/signal"
 	"path"
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/as/log"
 )
 
 var (
-	bs    = flag.Int("bs", 2048, "block size for copy operation")
-	dry   = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
-	test  = flag.Bool("test", false, "open and create files, but do not read or copy data")
-	quiet = flag.Bool("q", false, "dont print any progress output")
-	flaky = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
-	debug = flag.Bool("debug", false, "print debug logs")
+	bs       = flag.Int("bs", 2048, "block size for copy operation")
+	dry      = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
+	test     = flag.Bool("test", false, "open and create files, but do not read or copy data")
+	quiet    = flag.Bool("q", false, "dont print any progress output")
+	flaky    = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
+	debug    = flag.Bool("debug", false, "print debug logs")
+	deadband = flag.Duration("deadband", 20*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 
@@ -50,6 +53,12 @@ var driver = map[string]interface {
 	"http":  &HTTP{ctx: ctx},
 	"https": &HTTP{ctx: ctx},
 	"":      &OS{},
+}
+
+var killc = make(chan os.Signal, 2)
+
+func init() {
+	signal.Notify(killc, syscall.SIGINT, syscall.SIGTERM)
 }
 
 func closeAll() {
@@ -165,7 +174,9 @@ func main() {
 		line := log.Error.Add("action", "list", "src", a[0])
 		if err != nil {
 			if *flaky {
-				line.Add("err", err).Printf("")
+				line.Add("err", err).Printf("list error")
+				u := uri(a[0])
+				list = []Info{{URL: &u}}
 			} else {
 				line.Fatal().Add("err", err).Printf("")
 			}
@@ -189,9 +200,14 @@ func main() {
 	}
 
 	tick := time.NewTicker(time.Second).C
-
+	stopmon := make(chan bool)
+	if *deadband != 0 {
+		go monitor(stopmon, *deadband)
+	}
 	for i := 0; i < n; {
 		select {
+		case sig := <-killc:
+			log.Fatal.F("trapped signal: %s", sig)
 		case w := <-ec:
 			i++
 			line := log.Error.Add("action", "copy", "src", w.src, "dst", w.dst, "err", w.err)
@@ -207,6 +223,8 @@ func main() {
 			progress(i, n)
 		}
 	}
+	close(stopmon)
+
 	progress(n, n)
 	if nerr != 0 {
 		os.Exit(nerr)
@@ -216,6 +234,34 @@ func main() {
 var nerr = 0
 var txquota = 0
 var procstart = time.Now()
+
+func monitor(done chan bool, deadband time.Duration) {
+	lastn := int64(0)
+	lastio := time.Now()
+	exit := func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+		}
+		return false
+	}
+	for !exit() {
+		time.Sleep(time.Second)
+		rx := atomic.LoadInt64(&iostat.rx)
+		tx := atomic.LoadInt64(&iostat.tx)
+		n := rx + tx
+		if n > lastn {
+			lastio = time.Now()
+			lastn = n
+			continue
+		}
+		if time.Since(lastio) < deadband || exit() {
+			continue
+		}
+		log.Fatal.F("io error: pipeline stalled, no rx/tx for %s after %0.3f MiB of io", deadband, float64(n)/1024/1024)
+	}
+}
 
 func progress(done, total int) {
 	if *quiet {
