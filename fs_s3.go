@@ -106,6 +106,11 @@ func (g *S3) Open(file string) (io.ReadCloser, error) {
 		return nil, g.err
 	}
 	gc, _ := g.regionize(file)
+	su, _, err := g.Sign(file)
+	log.Debug.F("upgrade %q -> %q: %v", file, su, err)
+	if err == nil {
+		return HTTP{}.Open(su)
+	}
 	u := uri(file)
 	o, err := gc.GetObject(&s3.GetObjectInput{
 		Bucket: &u.Host,
