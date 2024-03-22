@@ -200,6 +200,9 @@ func (d *Disk) ReadAt(p []byte, off int64) (n int, err error) {
 	n, err = d.File.ReadAt(p, off)
 	if err != nil {
 		if err == io.EOF {
+			// This file has no way of knowing if its really EOF or not
+			// if the writer is slow, it will say this but the writer might
+			// still be doing writing in between.
 			return n, nil
 		}
 	}
