@@ -5,7 +5,6 @@ import (
 	"github.com/as/log"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -14,7 +13,9 @@ import (
 	s3 "github.com/aws/aws-sdk-go/service/s3"
 )
 
-var sema = make(chan bool, 32)
+const maxhttp = 32
+
+var sema = make(chan bool, maxhttp)
 
 func (g *S3) Sign(uri string) (string, int, error) {
 	if !g.ensure() {
@@ -29,18 +30,14 @@ func (g *S3) Sign(uri string) (string, int, error) {
 	su, _ := sig.Presign(72 * time.Hour)
 	size, err := httpsize(su)
 	if !*secure && strings.HasPrefix(su, "https") {
+		// This is a lot faster than using SSL or http2
 		su = "http" + strings.TrimPrefix(su, "https")
 	}
 	log.Info.F("http fast path for %d byte file %q: %v", size, uri, err)
 	return su, size, err
 }
 
-func parseURL(s string) url.URL {
-	if u, _ := url.Parse(s); u != nil {
-		return *u
-	}
-	return url.URL{}
-}
+var parseURL = uri
 
 func (f HTTP) fastopen(file string) (io.ReadCloser, error) {
 	f.ensure()
@@ -80,8 +77,10 @@ func (f *File) Download(dir string) error {
 	f.Block = make([]Store, nw)
 	for i := range f.Block {
 		if i == 0 {
+			// the first block will always be in memory
 			f.Block[i] = &Block{}
 		} else {
+			// use disk for subsequent
 			s, err := makedisk(i)
 			if err != nil {
 				return err
@@ -90,12 +89,12 @@ func (f *File) Download(dir string) error {
 		}
 	}
 	for i := 0; i < nw; i++ {
-		go f.work(dir, i, "")
+		go f.work(dir, i)
 	}
 	return nil
 }
 
-func (f *File) work(dir string, block int, _ string) {
+func (f *File) work(dir string, block int) {
 	r, _ := http.NewRequest("GET", dir, nil)
 	sp := block * f.BS
 	ep := sp + f.BS
@@ -104,7 +103,8 @@ func (f *File) work(dir string, block int, _ string) {
 	}
 	if block > 0 {
 		// NOTE(as): Sleep sort the workers so they take items from
-		// the semaphore in FIFO order.
+		// the semaphore in FIFO order. Unless its block 0, then just
+		// start
 		time.Sleep(100 * time.Millisecond * time.Duration(block))
 		sema <- true
 		defer func() {
@@ -115,9 +115,12 @@ func (f *File) work(dir string, block int, _ string) {
 	r.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", block*f.BS, ep-1))
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
-		panic(err)
+		log.Fatal.Add("err", err).F("downloading block %d", block)
 	}
-	io.Copy(f.Block[block], resp.Body)
+	_, err = io.Copy(f.Block[block], resp.Body)
+	if err != nil {
+		log.Fatal.Add("err", err).F("downloading block %d", block)
+	}
 	resp.Body.Close()
 }
 
@@ -140,11 +143,16 @@ func (f *File) Read(p []byte) (n int, err error) {
 	}
 	next := f.R / f.BS
 	if next > block {
+		// We only support one reader, if the next read
+		// advances past this block, we can dispose of it
+		// to free memory or disk space since nothing will
+		// read it again
 		f.Block[block].Close()
 	}
 	return
 }
 
+// Block is memory backed data
 type Block struct {
 	sync.Mutex
 	Data []byte
@@ -162,6 +170,7 @@ func (b *Block) Write(p []byte) (n int, err error) {
 	b.Unlock()
 	return len(p), nil
 }
+
 func (b *Block) ReadAt(p []byte, off int64) (n int, err error) {
 	at := int(off)
 	b.Lock()
@@ -181,6 +190,7 @@ func makedisk(n int) (*Disk, error) {
 	return &Disk{Name: fd.Name(), File: fd}, nil
 }
 
+// Disk is disk backed storage (hopefully not ramfs)
 type Disk struct {
 	Name string
 	*os.File
@@ -195,6 +205,7 @@ func (d *Disk) ReadAt(p []byte, off int64) (n int, err error) {
 	}
 	return
 }
+
 func (d *Disk) Close() error {
 	err := d.File.Close()
 	os.Remove(d.Name)

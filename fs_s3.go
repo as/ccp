@@ -107,7 +107,7 @@ func (g *S3) Open(file string) (io.ReadCloser, error) {
 	}
 	gc, _ := g.regionize(file)
 	su, _, err := g.Sign(file)
-	log.Printf("upgrade %q -> %q: %v", file, su, err)
+	log.Debug.F("upgrade %q -> %q: %v", file, su, err)
 	if err == nil {
 		return HTTP{}.Open(su)
 	}
