@@ -21,13 +21,18 @@ import (
 )
 
 var (
+	tmp      = flag.String("tmp", os.TempDir(), "temporary directory location")
+	partsize = flag.Int("partsize", 128*1024*1024, "temporary file partition size")
+	secure   = flag.Bool("secure", false, "disable https to http downgrade when using bucket optimizations")
+	slow     = flag.Bool("slow", false, "disable parallelism for same-file downloads using temp files (see tmp and partsize)")
+
 	bs       = flag.Int("bs", 2048, "block size for copy operation")
 	dry      = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
 	test     = flag.Bool("test", false, "open and create files, but do not read or copy data")
 	quiet    = flag.Bool("q", false, "dont print any progress output")
 	flaky    = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
 	debug    = flag.Bool("debug", false, "print debug logs")
-	deadband = flag.Duration("deadband", 20*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
+	deadband = flag.Duration("deadband", 60*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 
