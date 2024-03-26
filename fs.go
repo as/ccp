@@ -22,7 +22,7 @@ import (
 
 var (
 	tmp      = flag.String("tmp", os.TempDir(), "temporary directory location")
-	partsize = flag.Int("partsize", 128*1024*1024, "temporary file partition size")
+	partsize = flag.Int("partsize", 64*1024*1024, "temporary file partition size")
 	secure   = flag.Bool("secure", false, "disable https to http downgrade when using bucket optimizations")
 	slow     = flag.Bool("slow", false, "disable parallelism for same-file downloads using temp files (see tmp and partsize)")
 

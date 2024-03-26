@@ -117,7 +117,7 @@ ccp -ls /tmp/ccp | awk '{ if ($1 <= 10) print }'  | ccp -l -dry - /tmp/ccp.bak/
 
 ### Transfer Acceleration
 
-- Since v0.2.4, ccp will download http/https inputs larger than (default 128MiB) by spawning multiple connection (similar to aria2c) and using temporary files. The streaming nature of ccp is preserved and the process is transparent to the user. Disable it with `ccp -slow` to revert to pre-v0.2.4 behavior.
+- Since v0.2.4, ccp will download http/https inputs larger than (default 64MiB) by spawning multiple connection (similar to aria2c) and using temporary files. The streaming nature of ccp is preserved and the process is transparent to the user. Disable it with `ccp -slow` to revert to pre-v0.2.4 behavior.
 
 - Additionally, `ccp` will attempt to presign urls and download them over http when possible. If `ccp -secure` is used, it prevents presigned urls from being stripped to http from https.
 
