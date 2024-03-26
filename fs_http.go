@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sync"
 )
 
 type HTTP struct {
@@ -26,7 +27,18 @@ func (g *HTTP) List(dir string) (file []Info, err error) {
 	//curl -v -H 'Range: bytes=0-0'  http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
 }
 
-func httpsize(dir string) (int, error) {
+var cache = sync.Map{}
+
+func httpsize(dir string) (size int, err error) {
+	v, _ := cache.Load(dir)
+	if v, _ := v.(int); v != 0 {
+		return v, nil
+	}
+	defer func() {
+		if err == nil {
+			cache.Store(dir, size)
+		}
+	}()
 	r, err := http.NewRequest("GET", dir, nil)
 	if err != nil {
 		return 0, err
