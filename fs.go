@@ -26,6 +26,8 @@ var (
 	secure   = flag.Bool("secure", false, "disable https to http downgrade when using bucket optimizations")
 	slow     = flag.Bool("slow", false, "disable parallelism for same-file downloads using temp files (see tmp and partsize)")
 
+	recurse = flag.Bool("r", false, "assume input is a directory and attempt recursion")
+
 	bs       = flag.Int("bs", 2048, "block size for copy operation")
 	dry      = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
 	test     = flag.Bool("test", false, "open and create files, but do not read or copy data")
@@ -156,7 +158,11 @@ func main() {
 		list []Info
 		err  error
 	)
-
+	if strings.HasSuffix(uri(a[0]).Path, "/") {
+		// If it ends in a slash, its obviously a directory
+		// and recursion is implied.
+		*recurse = true
+	}
 	if a[0] == "-" && *stdinlist {
 		sc := bufio.NewScanner(os.Stdin)
 		for sc.Scan() {
@@ -174,7 +180,7 @@ func main() {
 		if len(list) == 1 {
 			a[0] = path.Dir(a[0])
 		}
-	} else {
+	} else if *recurse {
 		list, err = sfs.List(a[0])
 		line := log.Error.Add("action", "list", "src", a[0])
 		if err != nil {
@@ -186,6 +192,9 @@ func main() {
 				line.Fatal().Add("err", err).Printf("")
 			}
 		}
+	} else {
+		u := uri(a[0])
+		list = []Info{{URL: &u}}
 	}
 
 	ec := make(chan work)
