@@ -17,9 +17,21 @@ const maxhttp = 32
 
 var sema = make(chan bool, maxhttp)
 
-func (g *S3) Sign(uri string) (string, int, error) {
+func sslstrip(su string, err error) (string, error) {
+	if err != nil {
+		log.Error.F("signer: %s: %s", su, err)
+		return su, err
+	}
+	if !*secure && strings.HasPrefix(su, "https") {
+		// This is a lot faster than using SSL or http2
+		su = "http" + strings.TrimPrefix(su, "https")
+	}
+	return su, err
+}
+
+func (g *S3) Sign(uri string) (string, error) {
 	if !g.ensure() {
-		return "", 0, g.err
+		return "", g.err
 	}
 	gc, _ := g.regionize(uri)
 	u := parseURL(uri)
@@ -28,13 +40,7 @@ func (g *S3) Sign(uri string) (string, int, error) {
 		Key:    &u.Path,
 	})
 	su, _ := sig.Presign(72 * time.Hour)
-	size, err := httpsize(su)
-	if !*secure && strings.HasPrefix(su, "https") {
-		// This is a lot faster than using SSL or http2
-		su = "http" + strings.TrimPrefix(su, "https")
-	}
-	log.Info.F("http fast path for %d byte file %q: %v", size, uri, err)
-	return su, size, err
+	return sslstrip(su, nil)
 }
 
 var parseURL = uri

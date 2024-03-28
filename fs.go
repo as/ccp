@@ -25,6 +25,7 @@ var (
 	partsize = flag.Int("partsize", 64*1024*1024, "temporary file partition size")
 	secure   = flag.Bool("secure", false, "disable https to http downgrade when using bucket optimizations")
 	slow     = flag.Bool("slow", false, "disable parallelism for same-file downloads using temp files (see tmp and partsize)")
+	sign     = flag.Bool("s", false, "presign one or more files (s3 and gs) and output http urls")
 
 	recurse = flag.Bool("r", false, "assume input is a directory and attempt recursion")
 
@@ -143,6 +144,23 @@ func main() {
 		list(a...)
 		os.Exit(0)
 	}
+	if *sign {
+		type S interface {
+			Sign(uri string) (string, error)
+		}
+		for _, src := range a {
+			s, _ := driver[uri(src).Scheme].(S)
+			if s != nil {
+				su, err := s.Sign(src)
+				if err == nil {
+					src = su
+				}
+			}
+			fmt.Println(src)
+		}
+		os.Exit(0)
+	}
+
 	if len(a) != 2 {
 		log.Fatal.F("usage: ccp src... dst")
 	}

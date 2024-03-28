@@ -46,7 +46,7 @@ func httpsize(dir string) (size int, err error) {
 	r.Header.Add("Range", "bytes=0-0")
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil || resp.StatusCode/100 > 3 {
-		if resp.StatusCode == 416 {
+		if err == nil && resp.StatusCode == 416 {
 			return 0, nil
 		}
 		if err == nil {
