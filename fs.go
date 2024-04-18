@@ -21,6 +21,14 @@ import (
 )
 
 var (
+	tmp      = flag.String("tmp", os.TempDir(), "temporary directory location")
+	partsize = flag.Int("partsize", 64*1024*1024, "temporary file partition size")
+	secure   = flag.Bool("secure", false, "disable https to http downgrade when using bucket optimizations")
+	slow     = flag.Bool("slow", false, "disable parallelism for same-file downloads using temp files (see tmp and partsize)")
+	sign     = flag.Bool("s", false, "presign one or more files (s3 and gs) and output http urls")
+
+	recurse = flag.Bool("r", false, "assume input is a directory and attempt recursion")
+
 	bs       = flag.Int("bs", 2048, "block size for copy operation")
 	dry      = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
 	test     = flag.Bool("test", false, "open and create files, but do not read or copy data")
@@ -28,7 +36,8 @@ var (
 	flaky    = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
 	debug    = flag.Bool("debug", false, "print debug logs")
 	acl      = flag.String("acl", "", "apply this acl to the destination, e.g.: private, public-read, public-read-write, aws-exec-read")
-	deadband = flag.Duration("deadband", 20*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
+	deadband = flag.Duration("deadband", 60*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
+
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 
@@ -137,6 +146,23 @@ func main() {
 		list(a...)
 		os.Exit(0)
 	}
+	if *sign {
+		type S interface {
+			Sign(uri string) (string, error)
+		}
+		for _, src := range a {
+			s, _ := driver[uri(src).Scheme].(S)
+			if s != nil {
+				su, err := s.Sign(src)
+				if err == nil {
+					src = su
+				}
+			}
+			fmt.Println(src)
+		}
+		os.Exit(0)
+	}
+
 	if len(a) != 2 {
 		log.Fatal.F("usage: ccp src... dst")
 	}
@@ -152,7 +178,11 @@ func main() {
 		list []Info
 		err  error
 	)
-
+	if strings.HasSuffix(uri(a[0]).Path, "/") {
+		// If it ends in a slash, its obviously a directory
+		// and recursion is implied.
+		*recurse = true
+	}
 	if a[0] == "-" && *stdinlist {
 		sc := bufio.NewScanner(os.Stdin)
 		for sc.Scan() {
@@ -170,7 +200,7 @@ func main() {
 		if len(list) == 1 {
 			a[0] = path.Dir(a[0])
 		}
-	} else {
+	} else if *recurse {
 		list, err = sfs.List(a[0])
 		line := log.Error.Add("action", "list", "src", a[0])
 		if err != nil {
@@ -182,6 +212,9 @@ func main() {
 				line.Fatal().Add("err", err).Printf("")
 			}
 		}
+	} else {
+		u := uri(a[0])
+		list = []Info{{URL: &u}}
 	}
 
 	ec := make(chan work)
