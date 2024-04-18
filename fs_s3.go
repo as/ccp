@@ -210,9 +210,14 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 	if !*test {
 		grants = g.uploadGrants(u.Host)
 	}
-	acl := s3acl
-	if grants != "" {
-		acl = ""
+	acl := *acl
+	if acl == "" {
+		acl = s3acl
+		if grants != "" {
+			acl = ""
+		}
+	} else {
+		grants = ""
 	}
 
 	go func() {
@@ -222,11 +227,9 @@ func (g *S3) Create(file string) (io.WriteCloser, error) {
 		data, _ := br.Peek(32)
 		content := sniffContent(data)
 		_, err = gu.Upload(&s3m.UploadInput{
-			Body:   br,
-			Bucket: &u.Host,
-			Key:    &u.Path,
-			//		ACL:              &acl,
-			//		GrantFullControl: &grants,
+			Body:        br,
+			Bucket:      &u.Host,
+			Key:         &u.Path,
 			ContentType: &content,
 		})
 		if err == nil {

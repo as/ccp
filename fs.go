@@ -35,7 +35,9 @@ var (
 	quiet    = flag.Bool("q", false, "dont print any progress output")
 	flaky    = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
 	debug    = flag.Bool("debug", false, "print debug logs")
+	acl      = flag.String("acl", "", "apply this acl to the destination, e.g.: private, public-read, public-read-write, aws-exec-read")
 	deadband = flag.Duration("deadband", 60*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
+
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 
