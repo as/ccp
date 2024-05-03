@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -29,6 +30,21 @@ func (g *HTTP) List(dir string) (file []Info, err error) {
 
 var cache = sync.Map{}
 
+func newHTTPRequest(verb, path string, body io.Reader) (*http.Request, error) {
+	r, err := http.NewRequest(verb, path, body)
+	if err != nil {
+		return nil, err
+	}
+	if *header != "" {
+		k, v, _ := strings.Cut(*header, ":")
+		r.Header.Add(k, v)
+	}
+	if *agent != "" {
+		r.Header.Add("User-Agent", *agent)
+	}
+	return r, nil
+}
+
 func httpsize(dir string) (size int, err error) {
 	v, _ := cache.Load(dir)
 	if v, _ := v.(int); v != 0 {
@@ -39,7 +55,7 @@ func httpsize(dir string) (size int, err error) {
 			cache.Store(dir, size)
 		}
 	}()
-	r, err := http.NewRequest("GET", dir, nil)
+	r, err := newHTTPRequest("GET", dir, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -76,7 +92,11 @@ func (f HTTP) Open(file string) (io.ReadCloser, error) {
 
 func (f HTTP) open(file string) (io.ReadCloser, error) {
 	f.ensure()
-	req, _ := http.NewRequestWithContext(f.ctx, "GET", file, nil)
+	req, err := newHTTPRequest("GET", file, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(f.ctx)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode >= 400 {
 		if err == nil {

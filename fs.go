@@ -21,6 +21,8 @@ import (
 )
 
 var (
+	agent    = flag.String("A", "", "user agent")
+	header   = flag.String("H", "", "http header with colon seperated value (like curl)")
 	tmp      = flag.String("tmp", os.TempDir(), "temporary directory location")
 	partsize = flag.Int("partsize", 64*1024*1024, "temporary file partition size")
 	secure   = flag.Bool("secure", false, "disable https to http downgrade when using bucket optimizations")
@@ -37,7 +39,6 @@ var (
 	debug    = flag.Bool("debug", false, "print debug logs")
 	acl      = flag.String("acl", "", "apply this acl to the destination, e.g.: private, public-read, public-read-write, aws-exec-read")
 	deadband = flag.Duration("deadband", 60*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
-
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 

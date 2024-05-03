@@ -280,7 +280,11 @@ func awsRegion() string {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	req, _ := http.NewRequestWithContext(ctx, "GET", idURL, nil)
+	req, err := newHTTPRequest("GET", idURL, nil)
+	if err != nil {
+		return ""
+	}
+	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != 200 {

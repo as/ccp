@@ -101,7 +101,7 @@ func (f *File) Download(dir string) error {
 }
 
 func (f *File) work(dir string, block int) {
-	r, _ := http.NewRequest("GET", dir, nil)
+	r, _ := newHTTPRequest("GET", dir, nil)
 	sp := block * f.BS
 	ep := sp + f.BS
 	if ep > f.Len {
