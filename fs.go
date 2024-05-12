@@ -24,10 +24,11 @@ var (
 	agent    = flag.String("A", "", "user agent")
 	header   = flag.String("H", "", "http header with colon seperated value (like curl)")
 	tmp      = flag.String("tmp", os.TempDir(), "temporary directory location")
-	partsize = flag.Int("partsize", 64*1024*1024, "temporary file partition size")
+	partsize = flag.Int("partsize", 0, "temporary file partition size")
 	secure   = flag.Bool("secure", false, "disable https to http downgrade when using bucket optimizations")
 	slow     = flag.Bool("slow", false, "disable parallelism for same-file downloads using temp files (see tmp and partsize)")
 	sign     = flag.Bool("s", false, "presign one or more files (s3 and gs) and output http urls")
+	maxhttp  = flag.Int("maxhttp", 48, "global max http connections allowed")
 
 	recurse = flag.Bool("r", false, "assume input is a directory and attempt recursion")
 
@@ -141,6 +142,7 @@ func main() {
 	defer closeAll()
 
 	flag.Parse()
+	sema = make(chan bool, *maxhttp)
 	log.DebugOn = *debug
 	a := flag.Args()
 	if *ls {

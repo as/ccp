@@ -13,9 +13,7 @@ import (
 	s3 "github.com/aws/aws-sdk-go/service/s3"
 )
 
-const maxhttp = 32
-
-var sema = make(chan bool, maxhttp)
+var sema chan bool
 
 func sslstrip(su string, err error) (string, error) {
 	if err != nil {
@@ -70,12 +68,32 @@ type Store interface {
 	io.Writer
 }
 
+func calcpartsize(size int) (ps int) {
+	defer func() {
+		log.Info.Add("partsize", ps).Printf("chose partsize for %d MiB file", size/1024/1024)
+	}()
+	if *partsize != 0 {
+		return *partsize
+	}
+	switch {
+	case size >= 50*1024*1024*1024:
+		return 512 * 1024 * 1024
+	case size >= 5*1024*1024*1024:
+		return 256 * 1024 * 1024
+	case size >= 1024*1024*1024:
+		return 128 * 1024 * 1024
+	case size >= 100*1024*1024:
+		return 64 * 1024 * 1024
+	}
+	return 32 * 1024 * 1024
+}
+
 func (f *File) Download(dir string) error {
 	f.Len, _ = httpsize(dir)
 	if f.Len == 0 {
 		return fmt.Errorf("unknown file size")
 	}
-	nw := f.Len / *partsize
+	nw := f.Len / calcpartsize(f.Len)
 	if nw == 0 {
 		return fmt.Errorf("file too small")
 	}
@@ -107,7 +125,7 @@ func (f *File) work(dir string, block int) {
 	if ep > f.Len {
 		ep = f.Len
 	}
-	if block > 0 {
+	if block > 0 && sema != nil {
 		// NOTE(as): Sleep sort the workers so they take items from
 		// the semaphore in FIFO order. Unless its block 0, then just
 		// start

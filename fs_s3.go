@@ -52,7 +52,13 @@ func (g *S3) ensure() bool {
 	return g.err == nil
 }
 
-func (g *S3) regionize(file string) (*s3.S3, *s3m.Uploader) {
+func (g *S3) regionize(file string) (s3c *s3.S3, s3u *s3m.Uploader) {
+	defer func() {
+		if s3u != nil {
+			s3u.PartSize = 32 * 1024 * 1024
+			s3u.Concurrency = 16
+		}
+	}()
 	native := os.Getenv("AWS_REGION")
 	r, _ := s3manager.GetBucketRegion(g.ctx, g.s, uri(file).Host, "")
 	if r == "" {
