@@ -68,6 +68,7 @@ type Store interface {
 	io.ReaderAt
 	io.Closer
 	io.Writer
+	Fin() // marks the writer as done
 }
 
 func calcpartsize(size int) (ps int) {
@@ -105,6 +106,9 @@ func (f *File) Download(dir string) error {
 	f.BS = f.Len / nw
 	if *count > 0 {
 		nw = *count / partsize
+		if *count%partsize != 0 {
+			nw++
+		}
 		if nw == 0 {
 			nw = 1
 		}
@@ -132,6 +136,7 @@ func (f *File) Download(dir string) error {
 func (f *File) work(dir string, block int) {
 	r, _ := newHTTPRequest("GET", dir, nil)
 	sp := *seek + block*f.BS
+	//log.Info.Printf("sp=%d seek=%d count=%d", sp, *seek, *count)
 	if sp > *seek+*count && *count > 0 {
 		return
 	}
@@ -142,6 +147,8 @@ func (f *File) work(dir string, block int) {
 	if ep > f.Len {
 		ep = f.Len
 	}
+	clamp := f.BS*(block+1) - *count
+	//log.Info.Printf("bs=%d block=%d ep=%d f.Len=%d clamped to read %s bytes", f.BS, block, ep, f.Len, clamp)
 	if block > 0 && sema != nil {
 		// NOTE(as): Sleep sort the workers so they take items from
 		// the semaphore in FIFO order. Unless its block 0, then just
@@ -153,15 +160,22 @@ func (f *File) work(dir string, block int) {
 		}()
 	}
 	log.Debug.F("start %d", block)
+	//log.Info.Printf("Range %s", fmt.Sprintf("bytes=%d-%d", sp, ep-1))
 	r.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", sp, ep-1))
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		log.Fatal.Add("err", err).F("downloading block %d", block)
 	}
-	_, err = io.Copy(f.Block[block], resp.Body)
+	body := io.Reader(resp.Body)
+	if clamp > 0 {
+		body = io.LimitReader(body, int64(clamp))
+	}
+	_, err = io.Copy(f.Block[block], body)
 	if err != nil {
 		log.Fatal.Add("err", err).F("downloading block %d", block)
 	}
+	f.Block[block].Fin()
+	log.Printf("done")
 	resp.Body.Close()
 }
 
@@ -197,6 +211,13 @@ func (f *File) Read(p []byte) (n int, err error) {
 type Block struct {
 	sync.Mutex
 	Data []byte
+	fin  bool
+}
+
+func (b *Block) Fin() {
+	b.Lock()
+	b.fin = true
+	b.Unlock()
 }
 
 func (b *Block) Close() error {
@@ -217,6 +238,9 @@ func (b *Block) ReadAt(p []byte, off int64) (n int, err error) {
 	b.Lock()
 	defer b.Unlock()
 	if at >= len(b.Data) {
+		if b.fin {
+			return 0, io.EOF
+		}
 		return 0, nil
 	}
 	return copy(p, b.Data[at:]), nil
@@ -238,19 +262,25 @@ func makedisk(n int) (*Disk, error) {
 type Disk struct {
 	Name string
 	*os.File
+	fin int64 // if 0, still writing otherwise done
 }
 
 func (d *Disk) ReadAt(p []byte, off int64) (n int, err error) {
 	n, err = d.File.ReadAt(p, off)
 	if err != nil {
-		if err == io.EOF {
-			// This file has no way of knowing if its really EOF or not
-			// if the writer is slow, it will say this but the writer might
-			// still be doing writing in between.
+		if err == io.EOF && !d.final() {
 			return n, nil
 		}
 	}
 	return
+}
+
+func (d *Disk) Fin() {
+	atomic.AddInt64(&d.fin, +1)
+}
+
+func (d *Disk) final() bool {
+	return atomic.LoadInt64(&d.fin) != 0
 }
 
 func (d *Disk) Close() error {
