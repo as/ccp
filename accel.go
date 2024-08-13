@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/as/log"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"github.com/as/log"
 
 	s3 "github.com/aws/aws-sdk-go/service/s3"
 )
@@ -93,11 +95,18 @@ func (f *File) Download(dir string) error {
 	if f.Len == 0 {
 		return fmt.Errorf("unknown file size")
 	}
-	nw := f.Len / calcpartsize(f.Len)
+	partsize := calcpartsize(f.Len)
+	nw := f.Len / partsize
 	if nw == 0 {
 		return fmt.Errorf("file too small")
 	}
 	f.BS = f.Len / nw
+	if *count > 0 {
+		nw = *count / partsize
+		if nw == 0 {
+			nw = 1
+		}
+	}
 	f.Block = make([]Store, nw)
 	for i := range f.Block {
 		if i == 0 {
@@ -120,8 +129,14 @@ func (f *File) Download(dir string) error {
 
 func (f *File) work(dir string, block int) {
 	r, _ := newHTTPRequest("GET", dir, nil)
-	sp := block * f.BS
+	sp := *seek + block*f.BS
+	if sp > *seek+*count && *count > 0 {
+		return
+	}
 	ep := sp + f.BS
+	if ep > *seek+*count && *count > 0 {
+		ep = *seek + *count
+	}
 	if ep > f.Len {
 		ep = f.Len
 	}
@@ -136,7 +151,7 @@ func (f *File) work(dir string, block int) {
 		}()
 	}
 	log.Debug.F("start %d", block)
-	r.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", block*f.BS, ep-1))
+	r.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", sp, ep-1))
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		log.Fatal.Add("err", err).F("downloading block %d", block)
@@ -205,8 +220,11 @@ func (b *Block) ReadAt(p []byte, off int64) (n int, err error) {
 	return copy(p, b.Data[at:]), nil
 }
 
+var tmpctr int64
+
 func makedisk(n int) (*Disk, error) {
-	fd, err := os.CreateTemp(*tmp, fmt.Sprintf("ccp*-%d", n))
+	tmp := temps[atomic.AddInt64(&tmpctr, +1)%int64(len(temps))]
+	fd, err := os.CreateTemp(tmp, fmt.Sprintf("ccp*-%d", n))
 	if err != nil {
 		return nil, err
 	}

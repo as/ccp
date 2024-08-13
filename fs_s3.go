@@ -55,6 +55,7 @@ func (g *S3) ensure() bool {
 func (g *S3) regionize(file string) (s3c *s3.S3, s3u *s3m.Uploader) {
 	defer func() {
 		if s3u != nil {
+			//s3u.PartSize = 256 * 1024 * 1024
 			s3u.PartSize = 32 * 1024 * 1024
 			s3u.Concurrency = 16
 		}

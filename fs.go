@@ -32,7 +32,7 @@ var (
 
 	recurse = flag.Bool("r", false, "assume input is a directory and attempt recursion")
 
-	bs       = flag.Int("bs", 2048, "block size for copy operation")
+	bs       = flag.Int("bs", 0, "block size for copy operation (zero means unbuffered)")
 	dry      = flag.Bool("dry", false, "print (and unroll) ccp commands only; no I/O ops")
 	test     = flag.Bool("test", false, "open and create files, but do not read or copy data")
 	quiet    = flag.Bool("q", false, "dont print any progress output")
@@ -45,6 +45,9 @@ var (
 
 	rel       = flag.Bool("rel", false, "ls omits scheme and bucket")
 	stdinlist = flag.Bool("l", false, "treat stdin as a list of sources instead of data")
+
+	seek  = flag.Int("seek", 0, "byte offset to start reading from")
+	count = flag.Int("count", 0, "bytes to read")
 )
 
 var (
@@ -96,8 +99,12 @@ func docp(src, dst string, ec chan<- work) {
 			return
 		}
 		if !*test {
-			buf := make([]byte, *bs)
-			_, err = io.CopyBuffer(tx{dfd}, rx{sfd}, buf)
+			if *bs == 0 {
+				_, err = io.Copy(tx{dfd}, rx{sfd})
+			} else {
+				buf := make([]byte, *bs)
+				_, err = io.CopyBuffer(tx{dfd}, rx{sfd}, buf)
+			}
 		}
 		if err == nil {
 			sfd.Close()
@@ -137,11 +144,15 @@ func list(src ...string) {
 	}
 }
 
+var temps = []string{}
+
 func main() {
 	defer log.Trap()
 	defer closeAll()
 
 	flag.Parse()
+	temps = strings.Split(*tmp, ",")
+
 	sema = make(chan bool, *maxhttp)
 	log.DebugOn = *debug
 	a := flag.Args()
