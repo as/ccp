@@ -175,7 +175,6 @@ func (f *File) work(dir string, block int) {
 		log.Fatal.Add("err", err).F("downloading block %d", block)
 	}
 	f.Block[block].Fin()
-	log.Printf("done")
 	resp.Body.Close()
 }
 
