@@ -97,6 +97,13 @@ func (f HTTP) open(file string) (io.ReadCloser, error) {
 		return nil, err
 	}
 	req = req.WithContext(f.ctx)
+	if *seek != 0 || *count != 0 {
+		if *count == 0 {
+			req.Header.Add("Range", fmt.Sprintf("bytes=%d-", *seek))
+		} else {
+			req.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", *seek, *seek+*count-1))
+		}
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode >= 400 {
 		if err == nil {
