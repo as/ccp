@@ -72,7 +72,9 @@ type Store interface {
 
 func calcpartsize(size int) (ps int) {
 	defer func() {
-		log.Info.Add("partsize", ps).Printf("chose partsize for %d MiB file", size/1024/1024)
+		if !*quiet {
+			log.Info.Add("partsize", ps).Printf("chose partsize for %d MiB file", size/1024/1024)
+		}
 	}()
 	if *partsize != 0 {
 		return *partsize
