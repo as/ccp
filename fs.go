@@ -13,6 +13,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -258,6 +259,20 @@ func main() {
 		case msg := <-fatal:
 			log.Fatal.F("%s", msg)
 		case sig := <-killc:
+			var wg sync.WaitGroup
+			tmpdir.Range(func(key, value interface{}) bool {
+				file, _ := key.(string)
+				if file != "" {
+					wg.Add(1)
+					go func() {
+						log.Debug.F("removing file %s", file)
+						os.Remove(file)
+						wg.Done()
+					}()
+				}
+				return true
+			})
+			wg.Wait()
 			log.Fatal.F("trapped signal: %s", sig)
 		case w := <-ec:
 			i++
@@ -281,6 +296,8 @@ func main() {
 		os.Exit(nerr)
 	}
 }
+
+var tmpdir = sync.Map{}
 
 var nerr = 0
 var txquota = 0

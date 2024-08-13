@@ -254,6 +254,7 @@ func makedisk(n int) (*Disk, error) {
 		return nil, err
 	}
 	log.Debug.F("created temp file %s", fd.Name())
+	tmpdir.Store(fd.Name(), true)
 	return &Disk{Name: fd.Name(), File: fd}, nil
 }
 
@@ -285,6 +286,7 @@ func (d *Disk) final() bool {
 func (d *Disk) Close() error {
 	err := d.File.Close()
 	os.Remove(d.Name)
+	tmpdir.Delete(d.Name)
 	log.Debug.F("delete file %q", d.Name)
 	return err
 }
