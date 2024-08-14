@@ -72,6 +72,12 @@ type Store interface {
 }
 
 func calcpartsize(size int) (ps int) {
+	const (
+		KiB = 1024
+		MiB = KiB * 1024
+		GiB = MiB * 1024
+		TiB = GiB * 1024
+	)
 	defer func() {
 		if !*quiet {
 			log.Info.Add("partsize", ps).Printf("chose partsize for %d MiB file", size/1024/1024)
@@ -80,17 +86,24 @@ func calcpartsize(size int) (ps int) {
 	if *partsize != 0 {
 		return *partsize
 	}
-	switch {
-	case size >= 50*1024*1024*1024:
-		return 512 * 1024 * 1024
-	case size >= 5*1024*1024*1024:
-		return 256 * 1024 * 1024
-	case size >= 1024*1024*1024:
-		return 128 * 1024 * 1024
-	case size >= 100*1024*1024:
-		return 64 * 1024 * 1024
+	if *count != 0 && *count < size {
+		size = *count
 	}
-	return 32 * 1024 * 1024
+	switch {
+	case size >= 50*GiB:
+		return 512 * MiB
+	case size >= 5*GiB:
+		return 256 * MiB
+	case size >= 1*GiB:
+		return 128 * MiB
+	case size >= 100*MiB:
+		return 64 * MiB
+	case size >= 100*MiB:
+		return 64 * MiB
+	case size >= 32*MiB:
+		return 32 * MiB
+	}
+	return 8 * MiB
 }
 
 func (f *File) Download(dir string) error {
