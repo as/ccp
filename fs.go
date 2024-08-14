@@ -257,22 +257,10 @@ func main() {
 	for i := 0; i < n; {
 		select {
 		case msg := <-fatal:
+			cleanup()
 			log.Fatal.F("%s", msg)
 		case sig := <-killc:
-			var wg sync.WaitGroup
-			tmpdir.Range(func(key, value interface{}) bool {
-				file, _ := key.(string)
-				if file != "" {
-					wg.Add(1)
-					go func() {
-						log.Debug.F("removing file %s", file)
-						os.Remove(file)
-						wg.Done()
-					}()
-				}
-				return true
-			})
-			wg.Wait()
+			cleanup()
 			log.Fatal.F("trapped signal: %s", sig)
 		case w := <-ec:
 			i++
@@ -282,6 +270,7 @@ func main() {
 				if *flaky {
 					line.Printf("copy error: %s -> %s: %v", w.src, w.dst, w.err)
 				} else {
+					cleanup()
 					line.Fatal().F("copy error: %s -> %s: %v", w.src, w.dst, w.err)
 				}
 			}
@@ -293,11 +282,30 @@ func main() {
 
 	progress(n, n)
 	if nerr != 0 {
+		cleanup()
 		os.Exit(nerr)
 	}
 }
 
 var tmpdir = sync.Map{}
+
+// cleanup removes all registered and undeleted temporary files
+func cleanup() {
+	var wg sync.WaitGroup
+	tmpdir.Range(func(key, value interface{}) bool {
+		file, _ := key.(string)
+		if file != "" {
+			wg.Add(1)
+			go func() {
+				log.Debug.F("removing file %s", file)
+				os.Remove(file)
+				wg.Done()
+			}()
+		}
+		return true
+	})
+	wg.Wait()
+}
 
 var nerr = 0
 var txquota = 0
