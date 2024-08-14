@@ -30,16 +30,26 @@ ccp -test s3://bucket/file s3://bucket/file2
 
 You can also use `ccp -ls` to check access controls, however some schemes will allow accounts to `list` a file and then deny read access to that file.
 
+## Ranges (seek+skip)
+
+Using the `-seek` and `-skip` flag allows copying byte ranges from source files. This is only supported for some protocols.
+
+```
+ccp -q -seek 41 -count 7 http://example.com -
+Example
+```
+
+This works transparently with any download acceleration used by `ccp` at runtime (byte ranges are partitioned).
 
 ## Feature Matrix
 
-SCHEME | SRC | DST | COMMENT
--- | -- | -- | --
-s3 | x | x | amazon s3
-gs | x | x | google cloud storage
-http/https | x |   |  
-file | x | x | local file
-  | x | x | alias for file
+SCHEME | SRC | DST | SEEK+SKIP | COMMENT
+-- | -- | -- | --| --
+s3 | x | x |x| amazon s3
+gs | x | x || google cloud storage
+http/https | x || x  |  
+file | x | x || local file
+  | x | x || alias for file
 
 ## Configuration
 
