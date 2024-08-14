@@ -39,6 +39,8 @@ ccp -q -seek 41 -count 7 http://example.com -
 Example
 ```
 
+This works transparently with any download acceleration used by `ccp` at runtime (byte ranges are partitioned).
+
 ## Feature Matrix
 
 SCHEME | SRC | DST | SEEK+SKIP | COMMENT
