@@ -48,6 +48,8 @@ SCHEME | SRC | DST | SEEK+SKIP | COMMENT
 s3 | x | x |x| amazon s3
 gs | x | x || google cloud storage
 http/https | x || x  |  
+ftp/sftp |  ||   |  
+ssh |  ||   |  
 file | x | x || local file
   | x | x || alias for file
 
