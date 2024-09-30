@@ -47,8 +47,9 @@ var (
 	rel       = flag.Bool("rel", false, "ls omits scheme and bucket")
 	stdinlist = flag.Bool("l", false, "treat stdin as a list of sources instead of data")
 
-	seek  = flag.Int("seek", 0, "byte offset to start reading from")
-	count = flag.Int("count", 0, "bytes to read")
+	seek    = flag.Int("seek", 0, "source file byte offset to start reading from")
+	count   = flag.Int("count", 0, "source file bytes to read")
+	version = flag.Bool("v", false, "print version and exit")
 )
 
 var (
@@ -152,6 +153,10 @@ func main() {
 	defer closeAll()
 
 	flag.Parse()
+	if *version {
+		fmt.Println(Version)
+		os.Exit(0)
+	}
 	temps = strings.Split(*tmp, ",")
 
 	sema = make(chan bool, *maxhttp)
@@ -239,7 +244,7 @@ func main() {
 		if *dry {
 			fmt.Printf("ccp %q %q # %d\n", src, dst.String(), src.Size)
 		} else {
-			txquota += src.Size
+			addquota(src.Size)
 			go docp(src.String(), dst.String(), ec)
 			n++
 		}
@@ -254,8 +259,21 @@ func main() {
 	if *deadband != 0 {
 		go monitor(stopmon, fatal, *deadband)
 	}
+	sizecheck := time.After(19 * time.Second)
 	for i := 0; i < n; {
 		select {
+		case <-sizecheck:
+			if getquota() != 0 {
+				continue
+			}
+			cache.Range(func(key, value interface{}) bool {
+				n, _ := value.(int)
+				if *count != 0 {
+					n = *count
+				}
+				addquota(n)
+				return true
+			})
 		case msg := <-fatal:
 			cleanup()
 			log.Fatal.F("%s", msg)
@@ -308,7 +326,7 @@ func cleanup() {
 }
 
 var nerr = 0
-var txquota = 0
+var txquota = int64(0)
 var procstart = time.Now()
 
 func monitor(done chan bool, fatal chan string, deadband time.Duration) {
@@ -340,6 +358,13 @@ func monitor(done chan bool, fatal chan string, deadband time.Duration) {
 	}
 }
 
+func addquota(n int) {
+	atomic.AddInt64(&txquota, int64(n))
+}
+func getquota() int {
+	return int(atomic.LoadInt64(&txquota))
+}
+
 func progress(done, total int) {
 	rx := atomic.LoadInt64(&iostat.rx)
 	tx := atomic.LoadInt64(&iostat.tx)
@@ -349,8 +374,12 @@ func progress(done, total int) {
 		bps = tx / int64(s)
 	}
 	prog := int64(0)
+	txquota := getquota()
 	if txquota != 0 {
 		prog = tx * 100 / int64(txquota)
+		if prog > 100 {
+			prog = 100
+		}
 	}
 
 	if !*quiet {
@@ -379,12 +408,6 @@ func src2dst(prefix, src, dst string) url.URL {
 	su.Path = strings.TrimPrefix(su.Path, uri(prefix).Path)
 	du.Path = path.Join(du.Path, su.Path)
 	return du
-}
-func ck(c string, err error) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %v", c, err)
-		os.Exit(1)
-	}
 }
 
 type Info struct {

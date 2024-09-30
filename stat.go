@@ -24,6 +24,7 @@ func init() {
 			log.Tags = log.Tags.Add(key, val)
 		}
 	}
+	log.Tags = log.Tags.Add("ver", Version)
 }
 
 var iostat = struct {

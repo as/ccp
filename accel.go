@@ -262,7 +262,7 @@ var tmpctr int64
 
 func makedisk(n int) (*Disk, error) {
 	tmp := temps[atomic.AddInt64(&tmpctr, +1)%int64(len(temps))]
-	fd, err := os.CreateTemp(tmp, fmt.Sprintf("ccp*-%d", n))
+	fd, err := os.CreateTemp(tmp, fmt.Sprintf("ccp*-%01000d", n))
 	if err != nil {
 		return nil, err
 	}
