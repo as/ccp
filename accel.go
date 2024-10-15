@@ -71,7 +71,7 @@ type Store interface {
 	Fin() // marks the writer as done
 }
 
-func calcpartsize(size int) (ps int) {
+func calcpartsize(size, hint int) (ps int) {
 	const (
 		KiB = 1024
 		MiB = KiB * 1024
@@ -80,7 +80,7 @@ func calcpartsize(size int) (ps int) {
 	)
 	defer func() {
 		if !*quiet {
-			log.Info.Add("partsize", ps).Printf("chose partsize for %d MiB file", size/1024/1024)
+			log.Info.Add("partsize", ps).Printf("chose partsize for %d MiB file (%d MiB slice)", hint/1024/1024, size/1024/1024)
 		}
 	}()
 	if *partsize != 0 {
@@ -111,29 +111,33 @@ func (f *File) Download(dir string) error {
 	if f.Len == 0 {
 		return fmt.Errorf("unknown file size")
 	}
-	partsize := calcpartsize(f.Len)
-	nw := f.Len / partsize
+	count := *count
+	if count == 0 || count > f.Len-*seek {
+		count = f.Len - *seek
+	}
+	partsize := calcpartsize(count, f.Len)
+	nw := count / partsize
 	if nw == 0 {
 		return fmt.Errorf("file too small")
 	}
-	f.BS = f.Len / nw
-	if *count > 0 {
-		nw = *count / partsize
-		if *count%partsize != 0 {
-			nw++
-		}
-		if nw == 0 {
-			nw = 1
-		}
+	f.BS = count / nw
+	if count%partsize != 0 {
+		nw++
+	}
+	if nw == 0 {
+		nw = 1
 	}
 	f.Block = make([]Store, nw)
 	for i := range f.Block {
 		if i == 0 {
 			// the first block will always be in memory
 			f.Block[i] = &Block{}
+			log.Debug.Add().Printf("creating memory block")
+
 		} else {
 			// use disk for subsequent
 			s, err := makedisk(i)
+			log.Debug.Add().Printf("creating disk blocks")
 			if err != nil {
 				return err
 			}
@@ -141,39 +145,52 @@ func (f *File) Download(dir string) error {
 		}
 	}
 	for i := 0; i < nw; i++ {
+		i := i
 		go f.work(dir, i)
 	}
 	return nil
 }
 
 func (f *File) work(dir string, block int) {
+	defer func() {
+		f.Block[block].Fin()
+	}()
 	r, _ := newHTTPRequest("GET", dir, nil)
 	sp := *seek + block*f.BS
-	//log.Info.Printf("sp=%d seek=%d count=%d", sp, *seek, *count)
-	if sp > *seek+*count && *count > 0 {
+	log.Debug.Printf("sp=%d seek=%d count=%d", sp, *seek, *count)
+	count := *count
+	if *seek+count > f.Len || count == 0 {
+		count = f.Len
+	}
+	if sp > *seek+count && count > 0 {
 		return
 	}
 	ep := sp + f.BS
-	if ep > *seek+*count && *count > 0 {
-		ep = *seek + *count
+	if ep > *seek+count {
+		ep = *seek + count
 	}
 	if ep > f.Len {
 		ep = f.Len
 	}
-	clamp := f.BS*(block+1) - *count
-	//log.Info.Printf("bs=%d block=%d ep=%d f.Len=%d clamped to read %s bytes", f.BS, block, ep, f.Len, clamp)
+	if sp >= ep {
+		return
+	}
+	clamp := f.BS*(block+1) - count
+	clamp = ep - sp
+	log.Debug.Printf("bs=%d block=%d sp=%d ep=%d f.Len=%d clamped to byte %d", f.BS, block, sp, ep, f.Len, clamp)
 	if block > 0 && sema != nil {
 		// NOTE(as): Sleep sort the workers so they take items from
 		// the semaphore in FIFO order. Unless its block 0, then just
 		// start
-		time.Sleep(100 * time.Millisecond * time.Duration(block))
+		if !*nosort {
+			time.Sleep(200 * time.Millisecond * time.Duration(block))
+		}
 		sema <- true
 		defer func() {
 			<-sema
 		}()
 	}
-	log.Debug.F("start %d", block)
-	//log.Info.Printf("Range %s", fmt.Sprintf("bytes=%d-%d", sp, ep-1))
+	log.Debug.F("block %d: start range %s", block, fmt.Sprintf("bytes=%d-%d", sp, ep-1))
 	r.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", sp, ep-1))
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
@@ -181,13 +198,14 @@ func (f *File) work(dir string, block int) {
 	}
 	body := io.Reader(resp.Body)
 	if clamp > 0 {
+		log.Debug.F("block %d: limiting read to %d bytes", block, clamp)
 		body = io.LimitReader(body, int64(clamp))
 	}
-	_, err = io.Copy(f.Block[block], body)
+	n, err := io.Copy(f.Block[block], body)
+	log.Debug.F("block %d: read %d bytes", block, n)
 	if err != nil {
 		log.Fatal.Add("err", err).F("downloading block %d", block)
 	}
-	f.Block[block].Fin()
 	resp.Body.Close()
 }
 
@@ -203,10 +221,15 @@ func (f *File) Read(p []byte) (n int, err error) {
 	}
 
 	n, err = f.Block[block].ReadAt(p, int64(seek))
-
 	f.R += int(n)
-	if f.R >= f.Len {
-		err = io.EOF
+	if err == io.EOF && f.R/f.BS > block {
+		// its only a true EOF if the read advanced beyond
+		// the block; because blocks already detect the condition
+		// of data waiting to be written and return nil instead of EOF
+		err = nil
+	}
+	if err != nil {
+		log.Debug.F("read block %d@%d and read %d bytes err=%v", block, seek, n, err)
 	}
 	next := f.R / f.BS
 	if next > block {
@@ -262,8 +285,10 @@ var tmpctr int64
 
 func makedisk(n int) (*Disk, error) {
 	tmp := temps[atomic.AddInt64(&tmpctr, +1)%int64(len(temps))]
-	fd, err := os.CreateTemp(tmp, fmt.Sprintf("ccp*-%01000d", n))
+	log.Debug.Add().Printf("makedisk: %d: selected temp folder: %s", n, tmp)
+	fd, err := os.CreateTemp(tmp, fmt.Sprintf("ccp%s-%04d", "*", n))
 	if err != nil {
+		log.Error.Add().Printf("failed to create temp file in: %s: %s", tmp, err)
 		return nil, err
 	}
 	log.Debug.F("created temp file %s", fd.Name())
@@ -279,10 +304,17 @@ type Disk struct {
 }
 
 func (d *Disk) ReadAt(p []byte, off int64) (n int, err error) {
+	retry := 10
+Read:
 	n, err = d.File.ReadAt(p, off)
 	if err != nil {
 		if err == io.EOF && !d.final() {
 			return n, nil
+		}
+		log.Debug.F("read @%d: err: %v and final=%v", off, err, d.final())
+		if retry != 0 {
+			retry--
+			goto Read
 		}
 	}
 	return
@@ -298,8 +330,10 @@ func (d *Disk) final() bool {
 
 func (d *Disk) Close() error {
 	err := d.File.Close()
-	os.Remove(d.Name)
-	tmpdir.Delete(d.Name)
-	log.Debug.F("delete file %q", d.Name)
+	if !*nogc {
+		os.Remove(d.Name)
+		tmpdir.Delete(d.Name)
+		log.Debug.F("delete file %q", d.Name)
+	}
 	return err
 }

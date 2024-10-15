@@ -3,9 +3,14 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"errors"
 	"flag"
 	"fmt"
+	"hash"
 	"io"
 	"net/url"
 	"os"
@@ -47,9 +52,12 @@ var (
 	rel       = flag.Bool("rel", false, "ls omits scheme and bucket")
 	stdinlist = flag.Bool("l", false, "treat stdin as a list of sources instead of data")
 
-	seek    = flag.Int("seek", 0, "source file byte offset to start reading from")
-	count   = flag.Int("count", 0, "source file bytes to read")
-	version = flag.Bool("v", false, "print version and exit")
+	seek     = flag.Int("seek", 0, "source file byte offset to start reading from")
+	count    = flag.Int("count", 0, "source file bytes to read")
+	version  = flag.Bool("v", false, "print version and exit")
+	hashname = flag.String("hash", "", "hashes outgoing data (md5|sha1|sha256|sha384|sha512)")
+	nogc     = flag.Bool("nogc", false, "dont delete temporary files (debugging only)")
+	nosort   = flag.Bool("nosort", false, "this is a test flag that disables sorting of partition workers; used for debugging only")
 )
 
 var (
@@ -84,6 +92,27 @@ func closeAll() {
 	}
 }
 
+var hashes = map[string]func() hash.Hash{
+	"md5":    md5.New,
+	"sha1":   sha1.New,
+	"sha256": sha256.New,
+	"sha512": sha512.New,
+}
+
+func copyhash(dst io.Writer, src io.Reader) (n int64, sum string, err error) {
+	var h hash.Hash
+	new := hashes[*hashname]
+	if new != nil {
+		h = new()
+		src = io.TeeReader(src, h)
+	}
+	n, err = io.Copy(tx{dst}, rx{src})
+	if h != nil {
+		sum = fmt.Sprintf("%x", h.Sum(nil))
+	}
+	return
+}
+
 func docp(src, dst string, ec chan<- work) {
 	sfs := driver[uri(src).Scheme]
 	dfs := driver[uri(dst).Scheme]
@@ -100,13 +129,9 @@ func docp(src, dst string, ec chan<- work) {
 			ec <- work{src: src, dst: dst, err: fmt.Errorf("create dst: %s: %w", dst, err)}
 			return
 		}
+		sum := ""
 		if !*test {
-			if *bs == 0 {
-				_, err = io.Copy(tx{dfd}, rx{sfd})
-			} else {
-				buf := make([]byte, *bs)
-				_, err = io.CopyBuffer(tx{dfd}, rx{sfd}, buf)
-			}
+			_, sum, err = copyhash(dfd, sfd)
 		}
 		if err == nil {
 			sfd.Close()
@@ -114,7 +139,7 @@ func docp(src, dst string, ec chan<- work) {
 				err = fmt.Errorf("copy dst: %s: %w", dst, err)
 			}
 		}
-		ec <- work{src: src, dst: dst, err: err}
+		ec <- work{src: src, dst: dst, sum: sum, err: err}
 	}
 }
 
@@ -282,8 +307,9 @@ func main() {
 			log.Fatal.F("trapped signal: %s", sig)
 		case w := <-ec:
 			i++
-			line := log.Error.Add("action", "copy", "src", w.src, "dst", w.dst, "err", w.err)
+			line := log.Info.Add("action", "copy", "src", w.src, "dst", w.dst, "hashname", *hashname, "hash", w.sum, "err", w.err)
 			if w.err != nil {
+				line = log.Error.Add("status", "failed", "err", w.err)
 				nerr++
 				if *flaky {
 					line.Printf("copy error: %s -> %s: %v", w.src, w.dst, w.err)
@@ -291,6 +317,8 @@ func main() {
 					cleanup()
 					line.Fatal().F("copy error: %s -> %s: %v", w.src, w.dst, w.err)
 				}
+			} else {
+				line.Add("status", "done").Printf("")
 			}
 		case <-tick:
 			progress(i, n)
@@ -309,6 +337,9 @@ var tmpdir = sync.Map{}
 
 // cleanup removes all registered and undeleted temporary files
 func cleanup() {
+	if *nogc {
+		return
+	}
 	var wg sync.WaitGroup
 	tmpdir.Range(func(key, value interface{}) bool {
 		file, _ := key.(string)
@@ -398,8 +429,8 @@ func progress(done, total int) {
 }
 
 type work struct {
-	err      error
-	src, dst string
+	err           error
+	src, dst, sum string
 }
 
 func src2dst(prefix, src, dst string) url.URL {
