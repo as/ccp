@@ -53,6 +53,7 @@ func (g *S3) ensure() bool {
 }
 
 func (g *S3) regionize(file string) (s3c *s3.S3, s3u *s3m.Uploader) {
+	log.Debug.F("query region for file %s", file)
 	defer func() {
 		if s3u != nil {
 			//s3u.PartSize = 256 * 1024 * 1024
@@ -61,10 +62,19 @@ func (g *S3) regionize(file string) (s3c *s3.S3, s3u *s3m.Uploader) {
 		}
 	}()
 	native := os.Getenv("AWS_REGION")
-	r, _ := s3manager.GetBucketRegion(g.ctx, g.s, uri(file).Host, "")
+	if native == "" {
+		native = "us-east-1"
+	}
+	r, err := s3manager.GetBucketRegion(g.ctx, g.s, uri(file).Host, native)
+	if err != nil {
+		log.Error.Printf("error getting region for file: %s: %s", file, err)
+	}
 	if r == "" {
 		r = native
 	}
+	defer func() {
+		log.Debug.F("using region: %s", r)
+	}()
 	if r == native {
 		return g.c, g.u
 	}
@@ -74,7 +84,6 @@ func (g *S3) regionize(file string) (s3c *s3.S3, s3u *s3m.Uploader) {
 	if sess == nil {
 		return g.c, g.u
 	}
-	log.Debug.F("using new region configuration: %q", r)
 	return s3.New(sess), s3m.NewUploader(sess)
 }
 

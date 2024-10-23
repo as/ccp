@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -45,7 +47,7 @@ var (
 	flaky    = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
 	debug    = flag.Bool("debug", false, "print debug logs")
 	acl      = flag.String("acl", "", "apply this acl to the destination, e.g.: private, public-read, public-read-write, aws-exec-read")
-	deadband = flag.Duration("deadband", 60*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
+	deadband = flag.Duration("deadband", 600*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 
@@ -58,6 +60,7 @@ var (
 	hashname = flag.String("hash", "", "hashes outgoing data (md5|sha1|sha256|sha384|sha512)")
 	nogc     = flag.Bool("nogc", false, "dont delete temporary files (debugging only)")
 	nosort   = flag.Bool("nosort", false, "this is a test flag that disables sorting of partition workers; used for debugging only")
+	ipv4     = flag.Bool("4", false, "forces layer3 ipv4 for s3/http/https files")
 )
 
 var (
@@ -183,6 +186,27 @@ func main() {
 		os.Exit(0)
 	}
 	temps = strings.Split(*tmp, ",")
+
+	if *ipv4 {
+		dial := func(network, addr string) (conn net.Conn, err error) {
+			conn, err = net.Dial(network, addr)
+			line := log.Debug.Add("action", "dial", "network", network, "addr", addr)
+			if err != nil {
+				line.Error().Printf("connection failed: %s", err)
+				return
+			}
+			line = line.Add("laddr", conn.LocalAddr().String())
+			line = line.Add("raddr", conn.RemoteAddr().String())
+			if strings.HasPrefix(conn.RemoteAddr().String(), "[") {
+				line.Printf("skipping ipv6")
+				conn.Close()
+				return nil, errors.New("ipv6 disabled")
+			}
+			line.Printf("connected")
+			return conn, err
+		}
+		http.DefaultClient.Transport = &http.Transport{Dial: dial, ForceAttemptHTTP2: true}
+	}
 
 	sema = make(chan bool, *maxhttp)
 	log.DebugOn = *debug

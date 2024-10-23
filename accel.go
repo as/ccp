@@ -175,8 +175,7 @@ func (f *File) work(dir string, block int) {
 	if sp >= ep {
 		return
 	}
-	clamp := f.BS*(block+1) - count
-	clamp = ep - sp
+	clamp := ep - sp
 	log.Debug.Printf("bs=%d block=%d sp=%d ep=%d f.Len=%d clamped to byte %d", f.BS, block, sp, ep, f.Len, clamp)
 	if block > 0 && sema != nil {
 		// NOTE(as): Sleep sort the workers so they take items from
