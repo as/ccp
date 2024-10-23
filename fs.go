@@ -47,7 +47,7 @@ var (
 	flaky    = flag.Bool("flaky", false, "treat i/o errors as non-fatal")
 	debug    = flag.Bool("debug", false, "print debug logs")
 	acl      = flag.String("acl", "", "apply this acl to the destination, e.g.: private, public-read, public-read-write, aws-exec-read")
-	deadband = flag.Duration("deadband", 600*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
+	deadband = flag.Duration("deadband", 200*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
 
 	ls = flag.Bool("ls", false, "list the source files or dirs")
 
@@ -187,6 +187,7 @@ func main() {
 	}
 	temps = strings.Split(*tmp, ",")
 
+	log.DebugOn = *debug
 	if *ipv4 {
 		dial := func(network, addr string) (conn net.Conn, err error) {
 			conn, err = net.Dial(network, addr)
@@ -209,7 +210,6 @@ func main() {
 	}
 
 	sema = make(chan bool, *maxhttp)
-	log.DebugOn = *debug
 	a := flag.Args()
 	if *ls {
 		list(a...)
