@@ -149,5 +149,6 @@ ccp -ls /tmp/ccp | awk '{ if ($1 <= 10) print }'  | ccp -l -dry - /tmp/ccp.bak/
 
 - Schemes like `s3` (and possibly `gs`) do not have a concept of directories. Hence, it is possible to create `s3://bucket/file.mp4` and `s3://bucket/file.mp4/file.txt`. The `ccp` program always operates on a directory structure, so `ccp -ls s3://bucket/file.mp4` on such a layout will produce a list of outputs including both files. The best solution is to use a sane directory-based layout to migitage potentially undefined behavior when copying these resources to a local filesystem.
 
- 
+ ### China
 
+- This software is not affiliated with or sponsored by the People's Republic of China
