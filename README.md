@@ -19,6 +19,15 @@ ccp -ls s3://bucket/
 ccp -ls s3://bucket/dir
 ```
 
+
+### Delete
+
+# Note: This is currently non-recursive and only forks for os and s3
+```
+ccp -d test.txt
+ccp -d s3://bucket/file s3://bucket/file2 ... s3://bucket/fileN
+```
+
 ### Test
 
 The `test` flag will cause `ccp` to verify that it can read and write to the locations without copying data. The first example will check read access only, whereas the second also creates an empty `file2`. This is useful when you need to verify bucket permissions in advance before copying large files, however, it will create empty files.
