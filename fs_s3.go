@@ -30,6 +30,24 @@ type S3 struct {
 	err error
 }
 
+func (g *S3) Delete(dir string) (err error) {
+	if !g.ensure() {
+		return g.err
+	}
+	gc, _ := g.regionize(dir)
+	u := uri(dir)
+	dir = strings.TrimPrefix(u.Path, "/")
+
+	list := []*s3.ObjectIdentifier{{Key: &dir}}
+	_, err = gc.DeleteObjects(&s3.DeleteObjectsInput{
+		Bucket: &u.Host,
+		Delete: &s3.Delete{
+			Objects: list,
+		},
+	})
+	return err
+}
+
 type box struct {
 	c *s3.S3
 	u *s3m.Uploader

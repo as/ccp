@@ -12,6 +12,10 @@ import (
 type OS struct {
 }
 
+func (f OS) Delete(dir string) (err error) {
+	return os.Remove(dir)
+}
+
 func (f OS) List(dir string) (file []Info, err error) {
 	dir = localize(dir)
 	u := uri(dir)

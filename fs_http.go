@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,6 +20,10 @@ func (g *HTTP) ensure() bool {
 		g.ctx = context.Background()
 	}
 	return true
+}
+
+func (g *HTTP) Delete(dir string) (err error) {
+	return errors.New("not yet implemented")
 }
 
 func (g *HTTP) List(dir string) (file []Info, err error) {

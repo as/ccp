@@ -61,6 +61,8 @@ var (
 	nogc     = flag.Bool("nogc", false, "dont delete temporary files (debugging only)")
 	nosort   = flag.Bool("nosort", false, "this is a test flag that disables sorting of partition workers; used for debugging only")
 	ipv4     = flag.Bool("4", false, "forces layer3 ipv4 for s3/http/https files")
+
+	del = flag.Bool("d", false, "delete the file provided as the argument (currently not recursive)")
 )
 
 var (
@@ -71,6 +73,7 @@ var ctx = context.Background()
 
 var driver = map[string]interface {
 	List(string) ([]Info, error)
+	Delete(string) error
 	Open(string) (io.ReadCloser, error)
 	Create(string) (io.WriteCloser, error)
 	Close() error
@@ -174,6 +177,25 @@ func list(src ...string) {
 	}
 }
 
+func dodelete(src ...string) {
+	var fatal error
+	for _, src := range src {
+		sfs := driver[uri(src).Scheme]
+		if sfs == nil {
+			log.Fatal.F("src: scheme not supported: %s", src)
+		}
+		err := sfs.Delete(src)
+		if err != nil {
+			log.Error.F("delete error: %q: %v", src, err)
+			fatal = err
+			continue
+		}
+	}
+	if fatal != nil {
+		log.Fatal.Add("err", fatal).Printf("")
+	}
+}
+
 var temps = []string{}
 
 func main() {
@@ -213,6 +235,10 @@ func main() {
 	a := flag.Args()
 	if *ls {
 		list(a...)
+		os.Exit(0)
+	}
+	if *del {
+		dodelete(a...)
 		os.Exit(0)
 	}
 	if *sign {

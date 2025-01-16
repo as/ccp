@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 	"time"
@@ -15,6 +16,10 @@ type GS struct {
 	ctx context.Context
 	c   *storage.Client
 	err error
+}
+
+func (g *GS) Delete(dir string) (err error) {
+	return errors.New("not yet implemented")
 }
 
 func (g *GS) ensure() bool {
