@@ -52,15 +52,15 @@ This works transparently with any download acceleration used by `ccp` at runtime
 
 ## Feature Matrix
 
-SCHEME | SRC | DST | SEEK+SKIP | COMMENT
--- | -- | -- | --| --
-s3 | x | x |x| amazon s3
-gs | x | x || google cloud storage
-http/https | x || x  |  
-ftp/sftp |  ||   |  
-ssh |  ||   |  
-file | x | x || local file
-  | x | x || alias for file
+SCHEME | SRC | DST | DELETE | SEEK+SKIP | COMMENT
+-- | -- | -- | --| --| --
+s3 | x | x |x|x| amazon s3
+gs | x | x ||| google cloud storage
+http/https || x || x  |  
+ftp/sftp |  |||   |  
+ssh |  |||   |  
+file | x | x |x|| local file
+  | x | x |x|| alias for file
 
 ## Configuration
 
