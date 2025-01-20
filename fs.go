@@ -49,7 +49,9 @@ var (
 	acl      = flag.String("acl", "", "apply this acl to the destination, e.g.: private, public-read, public-read-write, aws-exec-read")
 	deadband = flag.Duration("deadband", 200*time.Second, "for copies, the non-cumulative duration of no io in the process (read+write) after which ccp emits a fatal error (zero means no timeout)")
 
-	ls = flag.Bool("ls", false, "list the source files or dirs")
+	ls         = flag.Bool("ls", false, "list the source files or dirs")
+	cat        = flag.Bool("cat", false, "concatenate the source files into one file (automatically enabled if dst is stdout)")
+	appendonly = flag.Bool("append", false, "attempt to append to the dst instead of overwriting (filesystem only)")
 
 	rel       = flag.Bool("rel", false, "ls omits scheme and bucket")
 	stdinlist = flag.Bool("l", false, "treat stdin as a list of sources instead of data")
@@ -119,7 +121,10 @@ func copyhash(dst io.Writer, src io.Reader) (n int64, sum string, err error) {
 	return
 }
 
-func docp(src, dst string, ec chan<- work) {
+func docp(src, dst string, ec chan<- work, donec chan bool) {
+	if donec != nil {
+		defer close(donec)
+	}
 	sfs := driver[uri(src).Scheme]
 	dfs := driver[uri(dst).Scheme]
 
@@ -141,8 +146,10 @@ func docp(src, dst string, ec chan<- work) {
 		}
 		if err == nil {
 			sfd.Close()
-			if err = dfd.Close(); err != nil {
-				err = fmt.Errorf("copy dst: %s: %w", dst, err)
+			if dst != "-" {
+				if err = dfd.Close(); err != nil {
+					err = fmt.Errorf("copy dst: %s: %w", dst, err)
+				}
 			}
 		}
 		ec <- work{src: src, dst: dst, sum: sum, err: err}
@@ -258,7 +265,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if len(a) != 2 {
+	if len(a) < 2 {
 		log.Fatal.F("usage: ccp src... dst")
 	}
 	sfs, dfs := driver[uri(a[0]).Scheme], driver[uri(a[1]).Scheme]
@@ -308,19 +315,39 @@ func main() {
 			}
 		}
 	} else {
-		u := uri(a[0])
-		list = []Info{{URL: &u}}
+		list = []Info{}
+		for _, file := range a[:len(a)-1] {
+			u := uri(file)
+			list = append(list, Info{URL: &u})
+		}
 	}
 
-	ec := make(chan work)
+	ec := make(chan work, len(a)+len(list))
 	n := 0
-	for _, src := range list {
-		dst := src2dst(a[0], src.String(), a[1])
+	lastarg := a[len(a)-1]
+	if lastarg == "-" {
+		*cat = true
+	}
+	var donec chan bool
+	for i, src := range list {
+		dst := src2dst(a[0], src.String(), lastarg) // TODO(as): bug, shouldnt be a[0]
+		if *cat {
+			donec = make(chan bool)
+			dst = uri(lastarg)
+			if i > 0 {
+				*appendonly = true
+			}
+		}
 		if *dry {
 			fmt.Printf("ccp %q %q # %d\n", src, dst.String(), src.Size)
 		} else {
 			addquota(src.Size)
-			go docp(src.String(), dst.String(), ec)
+			go docp(src.String(), dst.String(), ec, donec)
+			if donec != nil {
+				if i+1 != len(list) {
+					<-donec
+				}
+			}
 			n++
 		}
 	}

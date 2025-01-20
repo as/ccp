@@ -43,17 +43,26 @@ func (f OS) Open(file string) (io.ReadCloser, error) {
 	return os.Open(file)
 }
 
-func (f OS) Create(file string) (io.WriteCloser, error) {
+func (f OS) Create(file string) (w io.WriteCloser, err error) {
 	file = localize(file)
 	if file == "-" {
 		// Invariant: users with files named "-" will not
 		// ruin it for the rest of us.
 		return os.Stdout, nil
 	}
-	w, err := os.Create(file)
+	if *appendonly {
+		w, err = os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	} else {
+		w, err = os.Create(file)
+	}
 	if errors.Is(err, os.ErrNotExist) {
 		os.MkdirAll(filepath.Dir(file), 0777)
-		w, err = os.Create(file)
+
+		if *appendonly {
+			w, err = os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		} else {
+			w, err = os.Create(file)
+		}
 	}
 	return w, err
 }
