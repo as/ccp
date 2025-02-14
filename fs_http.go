@@ -67,6 +67,9 @@ func httpsize(dir string) (size int, err error) {
 	}
 	r.Header.Add("Range", "bytes=0-0")
 	resp, err := http.DefaultClient.Do(r)
+	if *debug {
+		logopen("httpsize", dir, resp, err)
+	}
 	if err != nil || resp.StatusCode/100 > 3 {
 		if err == nil && resp.StatusCode == 416 {
 			return 0, nil
@@ -94,15 +97,6 @@ func (f HTTP) Open(file string) (io.ReadCloser, error) {
 		return f.open(file)
 	}
 	return r, err
-}
-
-func logopen(caller string, file string, resp *http.Response, err error) {
-	h := []string{}
-	for k := range resp.Header {
-		h = append(h, k)
-		h = append(h, resp.Header.Get(k))
-	}
-	log.Debug.Add("action", "open", "func", caller, "file", file, "status", resp.StatusCode, "error", err, "headers", h).Printf("")
 }
 
 func (f HTTP) open(file string) (io.ReadCloser, error) {
@@ -140,3 +134,12 @@ func (f HTTP) Create(file string) (io.WriteCloser, error) {
 }
 
 func (f HTTP) Close() error { return nil }
+
+func logopen(caller string, file string, resp *http.Response, err error) {
+	h := []string{}
+	for k := range resp.Header {
+		h = append(h, k)
+		h = append(h, resp.Header.Get(k))
+	}
+	log.Debug.Add("action", "open", "func", caller, "file", file, "status", resp.StatusCode, "error", err, "headers", h).Printf("")
+}
