@@ -192,6 +192,9 @@ func (f *File) work(dir string, block int) {
 	log.Debug.F("block %d: start range %s", block, fmt.Sprintf("bytes=%d-%d", sp, ep-1))
 	r.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", sp, ep-1))
 	resp, err := http.DefaultClient.Do(r)
+	if *debug {
+		logopen("fastopen", dir, resp, err)
+	}
 	if err != nil {
 		log.Fatal.Add("err", err).F("downloading block %d", block)
 	}

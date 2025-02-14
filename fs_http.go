@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/as/log"
 )
 
 type HTTP struct {
@@ -30,7 +32,6 @@ func (g *HTTP) List(dir string) (file []Info, err error) {
 	u := uri(dir)
 	size, err := httpsize(dir)
 	return []Info{{URL: &u, Size: size}}, err
-	//curl -v -H 'Range: bytes=0-0'  http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
 }
 
 var cache = sync.Map{}
@@ -95,6 +96,15 @@ func (f HTTP) Open(file string) (io.ReadCloser, error) {
 	return r, err
 }
 
+func logopen(caller string, file string, resp *http.Response, err error) {
+	h := []string{}
+	for k := range resp.Header {
+		h = append(h, k)
+		h = append(h, resp.Header.Get(k))
+	}
+	log.Debug.Add("action", "open", "func", caller, "file", file, "status", resp.StatusCode, "error", err, "headers", h).Printf("")
+}
+
 func (f HTTP) open(file string) (io.ReadCloser, error) {
 	f.ensure()
 	req, err := newHTTPRequest("GET", file, nil)
@@ -110,6 +120,10 @@ func (f HTTP) open(file string) (io.ReadCloser, error) {
 		}
 	}
 	resp, err := http.DefaultClient.Do(req)
+
+	if *debug {
+		logopen("slowopen", file, resp, err)
+	}
 	if err != nil || resp.StatusCode >= 400 {
 		if err == nil {
 			err = fmt.Errorf("status: %v", resp.StatusCode)
