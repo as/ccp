@@ -137,9 +137,14 @@ func (f HTTP) Close() error { return nil }
 
 func logopen(caller string, file string, resp *http.Response, err error) {
 	h := []string{}
-	for k := range resp.Header {
-		h = append(h, k)
-		h = append(h, resp.Header.Get(k))
+	status := 0
+	if resp != nil {
+		status = resp.StatusCode
+		for k := range resp.Header {
+			h = append(h, k)
+			h = append(h, resp.Header.Get(k))
+		}
 	}
-	log.Debug.Add("action", "open", "func", caller, "file", file, "status", resp.StatusCode, "error", err, "headers", h).Printf("")
+
+	log.Debug.Add("action", "open", "func", caller, "file", file, "status", status, "error", err, "headers", h).Printf("")
 }

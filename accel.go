@@ -22,8 +22,13 @@ func sslstrip(su string, err error) (string, error) {
 		log.Error.F("signer: %s: %s", su, err)
 		return su, err
 	}
-	if !*secure && strings.HasPrefix(su, "https") {
-		// This is a lot faster than using SSL or http2
+	if *insecure && strings.HasPrefix(su, "https") {
+		// This used to be a lot faster than using SSL or http2
+		// but most providers just generate a redirect now instead
+		// of transmitting over an insecure connection, making this
+		// slower than https.
+		//
+		// it can only be enabled with -insecure
 		su = "http" + strings.TrimPrefix(su, "https")
 	}
 	return su, err
@@ -80,7 +85,7 @@ func calcpartsize(size, hint int) (ps int) {
 	)
 	defer func() {
 		if !*quiet {
-			log.Info.Add("partsize", ps).Printf("chose partsize for %d MiB file (%d MiB slice)", hint/1024/1024, size/1024/1024)
+			log.Info.Add("partsize", ps).Printf("chose %d MiB partsize for %d MiB file (%d MiB byte range)", ps/1024/1024, hint/1024/1024, size/1024/1024)
 		}
 	}()
 	if *partsize != 0 {
@@ -90,8 +95,12 @@ func calcpartsize(size, hint int) (ps int) {
 		size = *count
 	}
 	switch {
+	case size >= 100*GiB:
+		return 1024 * MiB
 	case size >= 50*GiB:
 		return 512 * MiB
+	case size >= 10*GiB:
+		return 384 * MiB
 	case size >= 5*GiB:
 		return 256 * MiB
 	case size >= 1*GiB:
@@ -128,14 +137,18 @@ func (f *File) Download(dir string) error {
 		nw = 1
 	}
 	f.Block = make([]Store, nw)
+
 	for i := range f.Block {
-		if i == 0 {
-			// the first block will always be in memory
+		if i == 0 && partsize <= *maxmem {
 			f.Block[i] = &Block{}
 			log.Debug.Add().Printf("creating memory block")
-
+			// the first block might be in memory
 		} else {
-			// use disk for subsequent
+			if i == 0 {
+				// unless its too big
+				log.Debug.Add().Printf("partsize %d too large for memory block (maxmem=%d)", partsize, *maxmem)
+			}
+			// but the rest will always use the disk
 			s, err := makedisk(i)
 			log.Debug.Add().Printf("creating disk blocks")
 			if err != nil {
@@ -252,13 +265,14 @@ type Block struct {
 }
 
 func (b *Block) Fin() {
+	log.Debug.F("memory block mark final")
 	b.Lock()
 	b.fin = true
 	b.Unlock()
 }
 
 func (b *Block) Close() error {
-	log.Debug.F("closing block")
+	log.Debug.F("closing memory block")
 	b.Data = nil
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -33,10 +34,12 @@ var (
 	header   = flag.String("H", "", "http header with colon seperated value (like curl)")
 	tmp      = flag.String("tmp", os.TempDir(), "temporary directory location")
 	partsize = flag.Int("partsize", 0, "temporary file partition size")
-	secure   = flag.Bool("secure", false, "disable https to http downgrade when using bucket optimizations")
-	slow     = flag.Bool("slow", false, "disable parallelism for same-file downloads using temp files (see tmp and partsize)")
-	sign     = flag.Bool("s", false, "presign one or more files (s3 and gs) and output http urls")
-	maxhttp  = flag.Int("maxhttp", 48, "global max http connections allowed")
+	secure   = flag.Bool("secure", true, "(deprecated; see -insecure) disable https to http downgrade when using bucket optimizations")
+	insecure = flag.Bool("insecure", false, "enable https to http downgrade when using bucket optimizations")
+
+	slow    = flag.Bool("slow", false, "disable parallelism for same-file downloads using temp files (see tmp and partsize)")
+	sign    = flag.Bool("s", false, "presign one or more files (s3 and gs) and output http urls")
+	maxhttp = flag.Int("maxhttp", 24, "global max http connections allowed")
 
 	recurse = flag.Bool("r", false, "assume input is a directory and attempt recursion")
 
@@ -63,6 +66,8 @@ var (
 	nogc     = flag.Bool("nogc", false, "dont delete temporary files (debugging only)")
 	nosort   = flag.Bool("nosort", false, "this is a test flag that disables sorting of partition workers; used for debugging only")
 	ipv4     = flag.Bool("4", false, "forces layer3 ipv4 for s3/http/https files")
+	http1    = flag.Bool("1", false, "disables http2 support for all connections")
+	maxmem   = flag.Int("maxmem", 32*1024*1024, "for http without -slow the maximum size at which a block0 will be created in memory instead of the disk; increasing this can reduce latency on slow disk backed storage at the expense of memory utilization")
 
 	del = flag.Bool("d", false, "delete the file provided as the argument (currently not recursive)")
 )
@@ -235,7 +240,22 @@ func main() {
 			line.Printf("connected")
 			return conn, err
 		}
-		http.DefaultClient.Transport = &http.Transport{Dial: dial, ForceAttemptHTTP2: true}
+		if *http1 {
+			log.Debug.Printf("bootstrap: ipv4: disable http2 completely")
+			http.DefaultClient.Transport = &http.Transport{
+				Dial:         dial,
+				TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
+			}
+		} else {
+			//
+			log.Debug.Printf("bootstrap: ipv4: will try http1 with custom dialer")
+			http.DefaultClient.Transport = &http.Transport{Dial: dial, ForceAttemptHTTP2: true}
+		}
+	} else if *http1 {
+		log.Debug.Printf("bootstrap: disable http2 completely")
+		http.DefaultClient.Transport = &http.Transport{
+			TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
+		}
 	}
 
 	sema = make(chan bool, *maxhttp)
