@@ -73,6 +73,8 @@ type Store interface {
 	io.ReaderAt
 	io.Closer
 	io.Writer
+	Init() error
+	Ready() bool
 	Fin() // marks the writer as done
 }
 
@@ -216,6 +218,7 @@ func (f *File) work(dir string, block int) {
 		log.Debug.F("block %d: limiting read to %d bytes", block, clamp)
 		body = io.LimitReader(body, int64(clamp))
 	}
+	f.Block[block].Init()
 	n, err := io.Copy(f.Block[block], body)
 	log.Debug.F("block %d: read %d bytes", block, n)
 	if err != nil {
@@ -233,6 +236,9 @@ func (f *File) Read(p []byte) (n int, err error) {
 	seek := f.R % f.BS
 	if block >= len(f.Block) {
 		return 0, io.EOF
+	}
+	if !f.Block[block].Ready() {
+		return 0, nil
 	}
 
 	n, err = f.Block[block].ReadAt(p, int64(seek))
@@ -260,8 +266,22 @@ func (f *File) Read(p []byte) (n int, err error) {
 // Block is memory backed data
 type Block struct {
 	sync.Mutex
-	Data []byte
-	fin  bool
+	Data  []byte
+	fin   bool
+	ready int64
+}
+
+func (b *Block) Init() (err error) {
+	b.Lock()
+	b.fin = false
+	b.Data = b.Data[:0]
+	b.Unlock()
+	atomic.AddInt64(&b.ready, +1)
+	return nil
+}
+
+func (b *Block) Ready() bool {
+	return atomic.LoadInt64(&b.ready) != 0
 }
 
 func (b *Block) Fin() {
@@ -302,29 +322,61 @@ var tmpctr int64
 func makedisk(n int) (*Disk, error) {
 	tmp := temps[atomic.AddInt64(&tmpctr, +1)%int64(len(temps))]
 	log.Debug.Add().Printf("makedisk: %d: selected temp folder: %s", n, tmp)
-	fd, err := os.CreateTemp(tmp, fmt.Sprintf("ccp%s-%04d", "*", n))
-	if err != nil {
-		log.Error.Add().Printf("failed to create temp file in: %s: %s", tmp, err)
-		return nil, err
+	d := &Disk{}
+	d.init = func() error {
+		fd, err := os.CreateTemp(tmp, fmt.Sprintf("ccp%s-%04d", "*", n))
+		if err != nil {
+			log.Error.Add().Printf("block %d: failed to create temp file in: %s: %s", n, tmp, err)
+			return err
+		}
+		d.Name = fd.Name()
+		d.File = fd
+		log.Debug.F("created temp file %s", fd.Name())
+		tmpdir.Store(fd.Name(), true)
+		return nil
 	}
-	log.Debug.F("created temp file %s", fd.Name())
-	tmpdir.Store(fd.Name(), true)
-	return &Disk{Name: fd.Name(), File: fd}, nil
+	return d, nil
 }
 
 // Disk is disk backed storage (hopefully not ramfs)
 type Disk struct {
 	Name string
+	init func() error
 	*os.File
-	fin int64 // if 0, still writing otherwise done
+	fin   int64 // if 0, still writing otherwise done
+	ready int64
+}
+
+func (d *Disk) Ready() bool {
+	return atomic.LoadInt64(&d.ready) != 0
+}
+
+func (d *Disk) Init() (err error) {
+	defer atomic.AddInt64(&d.ready, +1)
+	err = d.init()
+	if err != nil {
+		return fmt.Errorf("disk init: %w", err)
+	}
+	return nil
 }
 
 func (d *Disk) ReadAt(p []byte, off int64) (n int, err error) {
+	if !d.Ready() {
+		panic("readat before init")
+	}
 	retry := 10
 Read:
 	n, err = d.File.ReadAt(p, off)
+	if n == 0 && err == nil {
+		quantum() // avoid spinning in a read loop
+	}
 	if err != nil {
 		if err == io.EOF && !d.final() {
+			// fake eof because the writer is still writing from
+			// a slow connection, when its done this EOF will
+			// be correct
+
+			quantum() // avoid spinning in a read loop
 			return n, nil
 		}
 		log.Debug.F("read @%d: err: %v and final=%v", off, err, d.final())
