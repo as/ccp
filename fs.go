@@ -70,6 +70,9 @@ var (
 	maxmem   = flag.Int("maxmem", 32*1024*1024, "for http without -slow the maximum size at which a block0 will be created in memory instead of the disk; increasing this can reduce latency on slow disk backed storage at the expense of memory utilization")
 
 	del = flag.Bool("d", false, "delete the file provided as the argument (currently not recursive)")
+
+	limitRX = flag.Int("rxlimit", 0, "limit rx bandwidth (in MiB/s)")
+	spin    = flag.Bool("spin", false, "disable thread release when reading from a very slow connection, this may cause 100% cpu usage if set to true")
 )
 
 var (
@@ -119,7 +122,12 @@ func copyhash(dst io.Writer, src io.Reader) (n int64, sum string, err error) {
 		h = new()
 		src = io.TeeReader(src, h)
 	}
-	n, err = io.Copy(tx{dst}, rx{src})
+	if *limitRX <= 0 {
+		n, err = io.Copy(tx{dst}, rx{src})
+	} else {
+		mbps := int(*limitRX) * 1024 * 1024
+		n, err = io.Copy(tx{dst}, &rxlim{lim: mbps, rx: rx{src}})
+	}
 	if h != nil {
 		sum = fmt.Sprintf("%x", h.Sum(nil))
 	}
