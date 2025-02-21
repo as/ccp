@@ -43,11 +43,12 @@ func TestPartsize(t *testing.T) {
 					defer wg.Done()
 					seek, count := fmt.Sprint(i), fmt.Sprint(j)
 					key := seek + "," + count
-					cmd := exec.Command("ccp", "-debug", "-nosort", "-partsize", partsize, "-seek", seek, "-hash", "sha1", "-count", count, url, "-")
+					cmd := exec.Command("ccp", "-spin", "-debug", "-nosort", "-partsize", partsize, "-seek", seek, "-hash", "sha1", "-count", count, url, "-")
 					b := &bytes.Buffer{}
 					cmd.Stderr = b
 					out, err := cmd.Output()
 					if err != nil {
+						t.Log(b.String())
 						t.Fatal(err)
 					}
 					n := strings.Index(string(b.String()), `hash":"`)
