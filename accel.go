@@ -372,7 +372,7 @@ func (d *Disk) ReadAt(p []byte, off int64) (n int, err error) {
 	if !d.Ready() {
 		panic("readat before init")
 	}
-	retry := 10
+	retry := 5
 Read:
 	n, err = d.File.ReadAt(p, off)
 	if n == 0 && err == nil {
