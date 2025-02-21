@@ -167,6 +167,12 @@ func (f *File) Download(dir string) error {
 }
 
 func (f *File) work(dir string, block int) {
+	doinit := func() {
+		err := f.Block[block].Init()
+		if err != nil {
+			log.Fatal.Add("err", err).F("initializing block %d (tmp storage or permission issue): %v", block, err)
+		}
+	}
 	defer func() {
 		f.Block[block].Fin()
 	}()
@@ -178,6 +184,7 @@ func (f *File) work(dir string, block int) {
 		count = f.Len
 	}
 	if sp > *seek+count && count > 0 {
+		doinit()
 		return
 	}
 	ep := sp + f.BS
@@ -188,6 +195,7 @@ func (f *File) work(dir string, block int) {
 		ep = f.Len
 	}
 	if sp >= ep {
+		doinit()
 		return
 	}
 	clamp := ep - sp
@@ -218,10 +226,7 @@ func (f *File) work(dir string, block int) {
 		log.Debug.F("block %d: limiting read to %d bytes", block, clamp)
 		body = io.LimitReader(body, int64(clamp))
 	}
-	err = f.Block[block].Init()
-	if err != nil {
-		log.Fatal.Add("err", err).F("initializing block %d (tmp storage or permission issue): %v", block, err)
-	}
+	doinit()
 	n, err := io.Copy(f.Block[block], body)
 	log.Debug.F("block %d: read %d bytes", block, n)
 	if err != nil {
