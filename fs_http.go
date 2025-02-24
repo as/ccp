@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/as/log"
 )
@@ -79,10 +80,8 @@ func httpsize(dir string) (size int, err error) {
 		}
 		return 0, err
 	}
-	go func() {
-		io.Copy(ioutil.Discard, resp.Body)
-		resp.Body.Close()
-	}()
+	io.Copy(ioutil.Discard, resp.Body)
+	resp.Body.Close()
 	a, b, size := 0, 0, 0
 	_, err = fmt.Sscanf(resp.Header.Get("Content-Range"), "bytes %d-%d/%d", &a, &b, &size)
 	return size, err
@@ -113,15 +112,23 @@ func (f HTTP) open(file string) (io.ReadCloser, error) {
 			req.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", *seek, *seek+*count-1))
 		}
 	}
-	resp, err := http.DefaultClient.Do(req)
 
+	attempt := 0
+Retry:
+	resp, err := http.DefaultClient.Do(req.Clone(context.Background()))
 	if *debug {
 		logopen("slowopen", file, resp, err)
 	}
-	if err != nil || resp.StatusCode >= 400 {
-		if err == nil {
-			err = fmt.Errorf("status: %v", resp.StatusCode)
-		}
+	if attempt >= *maxretry && err != nil {
+		log.Error.Add("err", err).F("downloading file %s", file)
+	} else if err != nil {
+		attempt++
+		log.Error.Add("err", err).F("downloading file %s (attempt %d/%d)", file, attempt, *maxretry)
+		time.Sleep(time.Duration(attempt) * time.Second)
+		goto Retry
+	}
+	if resp.StatusCode >= 400 {
+		err = fmt.Errorf("status: %v", resp.StatusCode)
 		// NOTE(as): bug here with connection reuse
 		// if the body isn't read+closed by callee
 		return nil, err

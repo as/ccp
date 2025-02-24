@@ -69,6 +69,8 @@ var (
 	http1    = flag.Bool("1", false, "disables http2 support for all connections")
 	maxmem   = flag.Int("maxmem", 32*1024*1024, "for http without -slow the maximum size at which a block0 will be created in memory instead of the disk; increasing this can reduce latency on slow disk backed storage at the expense of memory utilization")
 
+	maxretry = flag.Int("retry", 3, "number of times ccp will retry an http download at a block level instead of terminating when the initial connection fails with a tcp reset")
+
 	del = flag.Bool("d", false, "delete the file provided as the argument (currently not recursive)")
 
 	limitRX = flag.Int("rxlimit", 0, "limit rx bandwidth (in MiB/s)")

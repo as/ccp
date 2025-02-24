@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -212,15 +213,24 @@ func (f *File) work(dir string, block int) {
 			<-sema
 		}()
 	}
-	log.Debug.F("block %d: start range %s", block, fmt.Sprintf("bytes=%d-%d", sp, ep-1))
+	log.Debug.F("download block %d: start range %s", block, fmt.Sprintf("bytes=%d-%d", sp, ep-1))
 	r.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", sp, ep-1))
-	resp, err := http.DefaultClient.Do(r)
+
+	attempt := 0
+Retry:
+	resp, err := http.DefaultClient.Do(r.Clone(context.Background()))
 	if *debug {
 		logopen("fastopen", dir, resp, err)
 	}
-	if err != nil {
+	if attempt >= *maxretry && err != nil {
 		log.Fatal.Add("err", err).F("downloading block %d", block)
+	} else if err != nil {
+		attempt++
+		log.Error.Add("err", err).F("downloading block %d (attempt %d/%d)", block, attempt, *maxretry)
+		time.Sleep(time.Duration(attempt) * time.Second)
+		goto Retry
 	}
+
 	body := io.Reader(resp.Body)
 	if clamp > 0 {
 		log.Debug.F("block %d: limiting read to %d bytes", block, clamp)
@@ -230,7 +240,7 @@ func (f *File) work(dir string, block int) {
 	n, err := io.Copy(f.Block[block], body)
 	log.Debug.F("block %d: read %d bytes", block, n)
 	if err != nil {
-		log.Fatal.Add("err", err).F("downloading block %d", block)
+		log.Fatal.Add("err", err).F("downloading block %d copied %d bytes before error", block, n)
 	}
 	resp.Body.Close()
 }
