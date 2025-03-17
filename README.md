@@ -156,6 +156,13 @@ ccp -ls /tmp/ccp | awk '{ if ($1 <= 10) print }'  | ccp -l -dry - /tmp/ccp.bak/
 
 - Currently, it is not possible to copy files across accounts using the same scheme. For example, two `s3` buckets managed by different accounts. This is not possible to resolve without introducing a config file that properly initializes credentials based on the source or destination path.
 
+- One workaround is to use the subshell along with two `ccp` processes, each containing the initialized credentials
+
+```
+# assuming ~/env/dev and ~/env/prod contain AWS_SECRET variables
+(. ~/env/dev; ccp s3://dev/file.webm - ) | ( . ~/env/prod; ccp - s3://prod/file.webm)
+```
+
 ### Cross-Scheme Directory Structures
 
 - Schemes like `s3` (and possibly `gs`) do not have a concept of directories. Hence, it is possible to create `s3://bucket/file.mp4` and `s3://bucket/file.mp4/file.txt`. The `ccp` program always operates on a directory structure, so `ccp -ls s3://bucket/file.mp4` on such a layout will produce a list of outputs including both files. The best solution is to use a sane directory-based layout to migitage potentially undefined behavior when copying these resources to a local filesystem.
