@@ -1,5 +1,5 @@
 # ccp
-ccp transparently copies files across different file servers, such as AWS (s3), google cloud storage (gs), http, and local filesystems. It supports download acceleration and streaming output, making it ideal for workflows that require pipelining with accelerated downloaded. The latter feature is unavailable with most download accelerators, as they download the entire file as partial data and stitch it together after its download. This is disk-inefficient and makes the file impossible to stream to standard output.
+ccp transparently copies files across different file servers, such as AWS (s3), google cloud storage (gs), http, and local filesystems. It supports download acceleration and streaming output, making it ideal for workflows that require pipelining with accelerated downloaded. The latter feature is unavailable with most download accelerators, as they download the entire file as partial data and stitch it together after its downloaded. This is disk-inefficient and makes the file impossible to stream to standard output.
 
 On an AWS s3 instance, ccp downloaded a 1.5 TiB file in less than 10 minutes on a 2 TiB volume.
 
