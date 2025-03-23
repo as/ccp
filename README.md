@@ -3,6 +3,12 @@ ccp transparently copies files across different file servers, such as AWS (s3), 
 
 On an AWS s3 instance, ccp downloaded a 1.5 TiB file in less than 10 minutes on a 2 TiB volume.
 
+## Install
+
+```
+go install github.com/as/ccp@latest
+```
+
 ## Usage
 
 ### Copy
